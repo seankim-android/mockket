@@ -68,10 +68,12 @@ Users have one master portfolio split into segments: self-managed and agent-mana
 
 ### Hiring an Agent
 
-User browses the marketplace, views an agent's profile and track record, and allocates a dollar amount. The agent runs in one of two modes:
+User browses the marketplace, views an agent's profile and track record, and allocates a dollar amount (minimum $1,000, maximum 50% of available cash). The agent runs in one of two modes:
 
-- **Advisory mode (default):** Agent sends trade recommendations via push notification. User approves or rejects each trade. Recommendations expire after 24 hours if not acted on.
+- **Advisory mode (default):** Agent sends up to one trade recommendation per day via push notification. User approves or rejects each trade blind — the agent's reasoning is not shown until after the user acts and is visible in the trade log. Recommendations expire after 24 hours if not acted on.
 - **Autopilot mode (premium):** Agent trades autonomously on its rebalancing schedule. User can override or pause at any time.
+
+If a user resets their portfolio, all agent hires are automatically paused. The user must manually re-confirm each hire to restart it.
 
 ### Real-Time Trading
 
@@ -79,7 +81,15 @@ Live stock prices via Alpaca API during market hours. Live crypto prices 24/7 vi
 
 ### Challenges
 
-Users start a challenge against any agent or another user. Fixed durations: 1 week, 1 month, 3 months. Leaderboard updates in real time. End-of-challenge recap screen breaks down who won, what trades decided it, and the agent's in-character reaction to the outcome.
+Users start a challenge against any agent. Fixed durations: 1 week, 1 month, 3 months (1 month only in MVP). The user allocates a cash amount from their main portfolio — this creates a separate challenge portfolio for the duration of the competition. The winner is whoever achieves the higher % return by the end date.
+
+Advisory mode recommendations from hired agents can apply to the challenge portfolio. The agent competes on its own separate simulated portfolio starting at the same balance.
+
+Users can exit a challenge early; doing so records it as a forfeit/loss in their challenge history. Portfolio resets are blocked while any challenge is active.
+
+A global leaderboard ranks opt-in users by 30-day rolling % return on their main portfolio. Users must enable leaderboard visibility in settings.
+
+End-of-challenge recap screen breaks down who won, what trades decided it, and the agent's in-character reaction to the outcome.
 
 ### Agent Logs & Trade Comparison
 
@@ -87,7 +97,9 @@ Each agent exposes a complete trade log showing every action taken: timestamp, t
 
 ### Agent Reactions
 
-After a user makes a trade, their hired agent can react with a short in-character blurb. Marcus: "Bold move on $TSLA. Let's see if you can keep up." Priya: "I wouldn't have done that, but I respect the conviction." This keeps the app feeling alive between sessions.
+After a user makes a trade that exceeds 5% of their portfolio value, their hired agent reacts with a short in-character blurb (max one reaction per agent per day). Marcus: "Bold move on $TSLA. Let's see if you can keep up." Priya: "I wouldn't have done that, but I respect the conviction." This keeps the app feeling alive between sessions.
+
+Stock-only agents go silent on trades during weekends when markets are closed, but send one in-character Saturday commentary — reflecting on the week or flagging what they're watching for Monday.
 
 ### Portfolio Reset
 
@@ -101,9 +113,9 @@ Push notifications for advisory mode recommendations, significant portfolio move
 
 ## Monetization
 
-**Free tier:** Access to all agents in advisory mode, one active challenge at a time, standard portfolio analytics, full agent marketplace and logs.
+**Free tier:** Access to all agents in advisory mode, one active challenge at a time, standard portfolio analytics, full agent marketplace and logs, agent holdings visible with a 24-hour delay.
 
-**Premium tier:** Autopilot mode for agents, multiple simultaneous challenges, advanced analytics (Sharpe ratio, drawdown charts, sector exposure breakdown), early access to new agents, real-time visibility into agent holdings (not just performance).
+**Premium tier:** Autopilot mode for agents, multiple simultaneous challenges, advanced analytics (Sharpe ratio, drawdown charts, sector exposure breakdown), early access to new agents, real-time visibility into agent holdings.
 
 **IAP:** Portfolio reset at $0.99 per reset.
 
@@ -155,12 +167,3 @@ Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only 
 
 V2 adds crypto, The Degen, HODL Hannah, The Quant, Elena, autopilot mode, limit orders, the full agent marketplace with slot mechanics, and the side-by-side trade comparison view.
 
----
-
-## Open Questions
-
-- Do users compete against each other (PvP) or only against agents in V1? PvP adds retention but also matchmaking complexity.
-- How transparent are agent holdings in free tier? Showing holdings in real time might undermine the challenge element.
-- Should advisory recommendations include the agent's reasoning upfront, or only reveal it in the post-trade log?
-- How do stock-only agents behave on weekends when markets are closed? Do they send any notifications or go fully silent?
-- Does a portfolio reset affect an agent's trust score or the hire relationship, or does the agent just keep running on the new balance?

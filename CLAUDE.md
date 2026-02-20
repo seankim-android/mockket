@@ -49,9 +49,33 @@ Mockket is a mobile paper trading app where users invest fake money in real mark
 - Trade history is permanent. Never delete it, even on reset.
 - Agent logs must include: timestamp, ticker, action (buy/sell), quantity, price at execution, in-character rationale string.
 - Challenge history is permanent. Resets do not affect challenge records.
-- Free users: advisory mode only, one active challenge, standard analytics.
-- Premium users: autopilot mode, multiple challenges, advanced analytics, agent holdings visibility.
+- Free users: advisory mode only, one active challenge, standard analytics, agent holdings with 24h delay.
+- Premium users: autopilot mode, multiple challenges, advanced analytics, real-time agent holdings visibility.
 - No ads, ever.
+
+**Resets:**
+- Portfolio resets are blocked while any challenge is active.
+- On reset, all agent hires are paused. User must manually re-confirm each hire to restart.
+
+**Challenges:**
+- Challenge portfolios are separate from the main portfolio. Cash is drawn from main portfolio cash at challenge start.
+- Challenge winner is determined by % return, not absolute dollar return.
+- Users can exit a challenge early; it is recorded as a forfeit/loss in challenge history.
+- Advisory mode recommendations from hired agents can apply to the challenge portfolio.
+- Challenges score against the V1 duration of 1 month only (MVP).
+
+**Agent behavior:**
+- Advisory recommendations: max 1 per agent per day per user.
+- Advisory recommendation reasoning is revealed post-trade only (not shown on approval screen).
+- Agent reactions trigger only on user trades >5% of portfolio value, max 1 reaction per agent per day.
+- Stock-only agents send one in-character Saturday commentary message on weekends (no trades).
+
+**Agent allocation:**
+- Minimum allocation: $1,000. Maximum allocation: 50% of available cash.
+
+**Leaderboard:**
+- Global leaderboard is opt-in. Users must enable it in settings.
+- Ranked by 30-day rolling % return on main portfolio.
 
 ---
 
@@ -98,6 +122,7 @@ User {
   id, email, displayName, isPremium
   portfolioCash: number          // current fake cash balance
   resetCount: number             // lifetime resets
+  leaderboardOptIn: boolean      // user must opt in to appear on leaderboard
   createdAt, updatedAt
 }
 
@@ -105,32 +130,34 @@ Trade {
   id, userId, agentId (nullable)
   ticker, action: "buy"|"sell"
   quantity, priceAtExecution
-  rationale: string              // agent rationale or user note
-  challengeId (nullable)
+  rationale: string              // agent rationale or user note (revealed post-trade for advisory)
+  challengeId (nullable)        // set if trade was made within a challenge portfolio
   executedAt
 }
 
 AgentHire {
   id, userId, agentId
-  allocatedCash: number
+  allocatedCash: number          // min $1,000, max 50% of available cash at hire time
   mode: "advisory" | "autopilot"
   isActive: boolean
+  isPaused: boolean              // auto-set to true on portfolio reset; user must re-confirm
   hiredAt, pausedAt (nullable)
 }
 
 Challenge {
   id, userId, agentId (nullable), opponentUserId (nullable)
   duration: "1w" | "1m" | "3m"
-  startingBalance: number
-  status: "active" | "completed"
+  startingBalance: number        // cash drawn from main portfolio at challenge start
+  status: "active" | "completed" | "forfeited"
+  isForfeited: boolean           // true if user exited early
   startedAt, endsAt, completedAt (nullable)
-  winnerId (nullable)
+  winnerId (nullable)            // determined by % return
 }
 
 AgentRecommendation {
-  id, userId, agentId, challengeId (nullable)
+  id, userId, agentId, challengeId (nullable)  // nullable = main portfolio, set = challenge portfolio
   ticker, action: "buy"|"sell"
-  quantity, rationale
+  quantity, rationale            // rationale not shown to user until after they act
   status: "pending" | "approved" | "rejected" | "expired"
   createdAt, expiresAt, actedAt (nullable)
 }
