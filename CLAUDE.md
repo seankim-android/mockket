@@ -79,6 +79,24 @@ Mockket is a mobile paper trading app where users invest fake money in real mark
 - Ranked by 30-day rolling % return on main portfolio.
 - Top 5 preview shown on Home screen. Full top 50 on Challenges tab.
 
+**Trading realism rules:**
+- Buy orders execute at ask price. Sell orders execute at bid price. Never at mid price.
+- Market orders show execution price disclaimer on confirmation screen: fills at next available ask, may differ from quoted price.
+- Stocks only trade Mon–Fri 9:30am–4:00pm ET. After-hours orders are queued for next market open and can be cancelled before then.
+- Crypto trades 24/7, no restrictions.
+- Market status (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS) shown on Markets and Trade screens at all times.
+- PDT warning at 2+ day trades in a 5-day window. Educational only, never blocks a trade.
+- Dividends credited to paper cash on ex-dividend date. Appears in activity feed.
+- Stock splits adjust share quantity and cost basis automatically.
+- Earnings dates shown as badges on stock cards within 7 days of reporting.
+
+**FTUE rules:**
+- Mission 1 cards (3 sequential actions) shown on Home for new users until all 3 are completed. Not skippable, not blocking.
+- Agent intro message fires within 2 minutes of account creation. Marcus only. Fires once per account, never again.
+- First trade confirmation screen shows one-time bid/ask and execution price annotations. Shown once, never again.
+- Post-first-trade full-screen card fires after first trade only.
+- Day 2 re-engagement message fires if user returns next day without a challenge started.
+
 ---
 
 ## Agent Module Interface
@@ -204,15 +222,37 @@ APPLE_CLIENT_ID            # for Sign in with Apple
 
 ## MVP Checklist
 
+**Core trading**
 - [ ] Alpaca API integration (stocks, paper trading)
 - [ ] WebSocket price feed → Redis pub/sub → client
+- [ ] Bid/ask spread on trade confirmation (buy at ask, sell at bid)
+- [ ] Market hours enforcement + after-hours order queuing
+- [ ] Market status indicator (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS)
+- [ ] PDT warning (2+ day trades in 5-day window)
+- [ ] Dividend credits on ex-dividend date
+- [ ] Stock split position adjustment
+- [ ] Earnings calendar badges (within 7 days of reporting)
+
+**Portfolio & agents**
 - [ ] Portfolio management (cash balance, holdings, P&L)
 - [ ] Marcus and Priya agent modules
 - [ ] Advisory mode recommendation flow
+- [ ] Agent trade log with rationale
+
+**Challenges & social**
 - [ ] 1-week and 1-month challenge creation and scoring
 - [ ] Friend challenge invite flow (link + username search)
-- [ ] Agent trade log with rationale
+- [ ] Leaderboard (top 50, opt-in to appear, top 5 preview on Home)
 - [ ] End-of-challenge recap screen
+
+**FTUE**
+- [ ] Mission 1 cards on Home (3 sequential actions)
+- [ ] Agent intro message (Marcus, fires within 2 min of account creation)
+- [ ] Annotated first trade confirmation (bid/ask + execution price labels)
+- [ ] Post-first-trade moment screen
+- [ ] Day 2 re-engagement message
+
+**Infrastructure**
 - [ ] Auth (email + Apple + Google)
 - [ ] Portfolio reset IAP ($0.99)
 - [ ] Push notifications (FCM)

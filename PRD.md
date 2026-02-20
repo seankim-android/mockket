@@ -79,6 +79,59 @@ If a user resets their portfolio, all agent hires are automatically paused. The 
 
 Live stock prices via Alpaca API during market hours. Live crypto prices 24/7 via Alpaca's crypto endpoints. WebSocket connections for real-time price updates. Agent portfolios rebalance on a schedule — every 6 hours for crypto, once daily for stocks in V1.
 
+### Trading Realism
+
+The paper trading experience mirrors how real markets work. Realism is not about complexity — it is about removing the moments that break immersion and remind users the stakes are fake.
+
+**Market hours**
+
+Stocks trade Monday–Friday 9:30am–4:00pm ET. Pre-market (4:00am–9:30am) and after-hours (4:00pm–8:00pm) data is visible but trading is restricted to market hours in V1. Crypto trades 24/7 with no restrictions.
+
+Order behavior outside market hours:
+- Orders submitted after hours are queued and execute at the next market open.
+- The confirmation screen shows: *"Market is closed. Your order will execute at the next market open."*
+- Queued orders can be cancelled before market open.
+- A market status indicator (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS) is visible on the Markets screen and the Trade screen at all times.
+
+**Bid/ask spread**
+
+Every stock and crypto asset has a bid (sell) price and an ask (buy) price. The spread between them is real cost.
+
+- Buy orders execute at the ask price.
+- Sell orders execute at the bid price.
+- The order confirmation screen shows both bid and ask, with the execution price clearly labelled ("You buy at the ask").
+- The displayed price on the Markets screen is the mid price. Switching to the Trade screen shows the actual execution price.
+
+This is the single most important realism feature. Paper trading apps that execute at mid price create unrealistic P&L expectations.
+
+**Market order execution**
+
+Market orders do not guarantee the price shown. The confirmation screen states: *"Fills at next available ask price. Final price may differ slightly from the quote above."*
+
+In practice, for liquid stocks and BTC/ETH, the slippage is negligible. For illiquid names, a slippage estimate is shown based on the asset's average spread.
+
+**Pattern Day Trader (PDT) warning**
+
+US regulations define a Pattern Day Trader as anyone who executes 4 or more day trades in a 5-business-day window with an account under $25,000. Mockket does not enforce this rule — paper accounts are exempt — but it surfaces the warning when a user approaches the threshold:
+
+- At 2 day trades in a 5-day window: a small informational banner: *"2 of 3 day trades used this week. PDT rule applies to real accounts under $25k."*
+- At 3 day trades: banner becomes amber with a link to a short explainer.
+- The warning is educational only. It never blocks a trade.
+
+**Dividends**
+
+When a user holds a stock on its ex-dividend date, the dividend amount is credited to their paper cash balance. The Home activity feed shows a line item: *"$JNJ dividend — $3.20 credited."* Agents' portfolios receive dividends too, which affects their reported returns.
+
+Dividend yield is displayed on stock detail pages.
+
+**Stock splits**
+
+When a held stock splits, share quantity and cost basis are adjusted automatically. The activity feed notes the split. No user action required.
+
+**Earnings calendar**
+
+The Markets screen and stock detail pages display upcoming earnings dates for any stock. A "Reporting earnings in X days" badge appears on the stock card when an earnings date is within 7 days. Agents' trade rationale logs reference upcoming earnings when relevant (e.g. Priya: *"Holding through earnings — balance sheet is clean."*).
+
 ### Challenges
 
 Users start a challenge against any agent or another user. Fixed durations: 1 week, 1 month, 3 months (1-week and 1-month in MVP). The user allocates a cash amount from their main portfolio — this creates a separate challenge portfolio for the duration of the competition. The winner is whoever achieves the higher % return by the end date.
@@ -114,7 +167,7 @@ Available as a one-time IAP ($0.99). Resets the user's cash balance to $100,000.
 
 ### Notifications
 
-Push notifications for advisory mode recommendations, significant portfolio moves (5%+ in a day), challenge milestones, agent reactions, recommendation expirations, and end-of-challenge recaps.
+Push notifications for: advisory mode recommendations, significant portfolio moves (5%+ in a day), challenge milestones, agent reactions, recommendation expirations, end-of-challenge recaps, queued order execution at market open, dividend credits, and Day 2 re-engagement message (if no challenge started).
 
 ---
 
@@ -134,9 +187,9 @@ No ads. The product positioning is a serious-but-fun finance app and ads undermi
 
 **Home** — Portfolio value, active challenge standings, agent activity feed showing what your hired agents did today, leaderboard preview (top 5 users by 30-day return).
 
-**Markets** — Stock and crypto search, watchlist, real-time prices with market status indicator. Crypto visible 24/7, stocks show after-hours data with visual indicator.
+**Markets** — Stock and crypto search, watchlist, real-time prices with market status indicator (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS). Earnings calendar badges on stocks reporting within 7 days. Crypto visible 24/7, stocks show after-hours data with visual indicator.
 
-**Trade** — Buy/sell flow, order type selection (market/limit in V2), confirmation screen with current price.
+**Trade** — Buy/sell flow, market order confirmation with bid/ask spread shown, execution price disclaimer, market hours status. After-hours orders show queue warning. Order type selection (market/limit) in V2.
 
 **Agent Marketplace** — Browsable roster filterable by strategy, risk level, and asset class. Profile card for each agent with key stats and a hire button. Slot availability shown for popular agents.
 
@@ -176,7 +229,71 @@ First-time users see a 3-screen welcome flow before landing on Home:
 2. **How it works** — Three bullet points with icons: trade with $100k paper cash against live prices / challenge AI agents with real track records / see exactly where you diverged and what it cost you. Skip option.
 3. **Notification permission** — "Marcus wants to send you trade tips." Explains advisory mode push notifications with Allow / Not Now options. This is the only place the OS permission prompt is triggered. Users who tap Not Now can enable later from Settings.
 
-After onboarding, user lands on Home. No tutorial overlay — the empty state on Home guides them naturally (see Empty States).
+After onboarding, user lands on Home. The FTUE guide takes over from here — see First-Time User Experience below.
+
+---
+
+## First-Time User Experience
+
+The FTUE runs from account creation through the first completed challenge. It replaces empty states with a directed path, introduces agents through action rather than explanation, and gets the user to their first meaningful moment (comparing their trades against an agent's) as fast as possible.
+
+### Mission 1 Cards (Home screen)
+
+New users see a "Your first moves" section pinned to the top of Home. It shows three sequential action cards. Each card disappears once its action is completed. The section disappears entirely once all three are done.
+
+**Card 1: See what Marcus is trading**
+CTA: "View Marcus's moves →"
+Taps into Marcus's agent profile / trade log. Marked complete after 10 seconds on the page or after scrolling the log.
+
+**Card 2: Make your first trade**
+CTA: "Go to Markets →"
+Marked complete after first trade executes.
+
+**Card 3: Challenge an agent**
+CTA: "Start a challenge →"
+Marked complete after a challenge is created (doesn't need to resolve).
+
+Cards are not skippable. They are not a blocking modal — the user can ignore them and use the app freely. But they persist on Home until completed. No progress percentage, no gamification framing — just three clear prompts.
+
+### Agent Intro Message
+
+Within 2 minutes of account creation, Marcus sends an in-app notification card (and a push notification if permission was granted):
+
+> *"New money just hit the account. Let's see what you do with it."*
+
+This appears as the first item in the Home activity feed. It links to Marcus's profile. If the user has not hired Marcus, a "Hire Marcus" button appears at the bottom of his profile with the message still visible.
+
+This is the only unprompted agent message that fires outside of normal reaction triggers. It happens once per account, never again.
+
+### Annotated First Trade
+
+The first time a user reaches the trade confirmation screen, key fields display one-time educational labels:
+
+- **Execution price** — *"Market orders fill at the next available ask price, which may differ slightly from the quote you saw."*
+- **Bid / Ask spread** — *"The spread is the difference between what buyers will pay and what sellers will accept. You buy at the ask, sell at the bid."*
+
+These labels are shown once and never again. They do not block or slow the flow — they appear as small inline annotations below each field, not as modals.
+
+### Post-First-Trade Moment
+
+After the first trade executes, a full-screen card overlays the confirmation screen:
+
+> **"First trade in the books."**
+> [Ticker] [Action] [Quantity] at [Price]
+>
+> *"See what Marcus would have done with [ticker]."*
+> [View Marcus's [ticker] position →]
+
+Tapping the CTA opens Marcus's trade log filtered to that ticker. Dismissing the card goes back to Markets. This moment happens once — the first trade only.
+
+### Day 2 Re-engagement
+
+If the user returns the next day and has not yet started a challenge, a card appears at the top of Home:
+
+> *"Marcus is up 2.1% since you joined. Are you ahead or behind?"*
+> [Start a challenge →]
+
+This is the only FTUE message that fires on day 2. It uses Marcus's actual return since the user's account creation date.
 
 ---
 
@@ -265,7 +382,7 @@ When a user withdraws from an agent hire:
 
 | Screen | Condition | Message |
 |---|---|---|
-| Home — activity feed | No agents hired yet | "Hire an agent to see their moves here. Head to the Agents tab to get started." |
+| Home — activity feed | No agents hired yet | Mission 1 cards shown instead (see FTUE). After FTUE complete: "Hire an agent to see their moves here." |
 | Home — challenges | No active challenge | "No active challenge. Start one from the Challenges tab." |
 | Portfolio — holdings | No holdings, no agents | "Your portfolio is empty. Go to Markets to make your first trade." |
 | Challenges — history | No completed challenges | "No challenge history yet. Start your first challenge." |
@@ -287,7 +404,9 @@ When a user withdraws from an agent hire:
 
 ## Tech Stack
 
-Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only (autopilot in V2), 1-week and 1-month challenges, agent challenges and friend challenges, market orders only, basic portfolio view, agent trade logs, leaderboard (top 50), and end-of-challenge recap. That's a complete product with the full core loop intact.
+Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only (autopilot in V2), 1-week and 1-month challenges, agent challenges and friend challenges, market orders only (limit orders in V2), FTUE guide (Mission 1 cards + agent intro + annotated first trade), bid/ask spread on trade confirmation, market hours enforcement with after-hours order queuing, PDT warning, dividends, stock splits, earnings calendar, basic portfolio view, agent trade logs, leaderboard (top 50), and end-of-challenge recap. That's a complete product with the full core loop intact.
+
+V2 adds crypto, The Degen, HODL Hannah, The Quant, Elena, autopilot mode, limit orders, the full agent marketplace with slot mechanics, the side-by-side trade comparison view, and pre-market/after-hours trading.
 
 V2 adds crypto, The Degen, HODL Hannah, The Quant, Elena, autopilot mode, limit orders, the full agent marketplace with slot mechanics, and the side-by-side trade comparison view.
 
