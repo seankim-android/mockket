@@ -8,7 +8,7 @@ Mockket is a mobile app where users invest fake money in real markets (stocks an
 
 ## Problem
 
-Paper trading apps are boring because there's nothing at stake and nothing to compete against. Investment education apps are dry. TradeRival combines the engagement of competition with learn-by-doing paper trading, wrapped in a character-driven marketplace that makes finance feel approachable and fun.
+Paper trading apps are boring because there's nothing at stake and nothing to compete against. Investment education apps are dry. Mockket combines the engagement of competition with learn-by-doing paper trading, wrapped in a character-driven marketplace that makes finance feel approachable and fun.
 
 ---
 
@@ -155,13 +155,130 @@ No ads. The product positioning is a serious-but-fun finance app and ads undermi
 
 **Agent Logic** — Rule-based strategies in V1. Each agent is an isolated module with its own rebalancing rules running on a cron schedule. No ML required initially. Modularity means new agents are easy to add without touching existing ones.
 
-**Auth** — Email/password, Sign in with Apple, Sign in with Google.
+**Auth** — Supabase Auth. Email/password, Sign in with Apple, Sign in with Google.
 
 **Notifications** — Firebase Cloud Messaging.
 
 ---
 
-## MVP Scope
+## Onboarding
+
+First-time users see a 3-screen welcome flow before landing on Home:
+
+1. **Welcome** — App name, one-line value prop ("Invest fake money. Beat real AI."), Get Started button.
+2. **How it works** — Three bullet points with icons: trade with $100k fake cash / hire AI agents or compete against them / learn from the comparison. Skip option.
+3. **Notification permission** — "Marcus wants to send you trade tips." Explains advisory mode push notifications with Allow / Not Now options. This is the only place the OS permission prompt is triggered. Users who tap Not Now can enable later from Settings.
+
+After onboarding, user lands on Home. No tutorial overlay — the empty state on Home guides them naturally (see Empty States).
+
+---
+
+## Settings Screen
+
+Accessible from a gear icon in the top-right of the Portfolio tab.
+
+**Account**
+- Display name (editable)
+- Email (read-only)
+- Subscription status (Free / Premium) with upgrade CTA if free
+- Reset count (e.g. "Resets used: 2")
+
+**Privacy**
+- Show on leaderboard (toggle, off by default)
+
+**Notifications**
+- Advisory recommendations (toggle)
+- Agent reactions (toggle)
+- Challenge milestones (toggle)
+- Portfolio alerts — 5%+ moves (toggle)
+- Recommendation expiry reminders (toggle)
+
+**App**
+- Rate Mockket
+- Privacy Policy
+- Terms of Service
+
+**Danger Zone**
+- Delete account — requires confirmation ("Type DELETE to confirm"). Deletes user account and all personal data. Trade history is anonymized, not deleted, to preserve leaderboard historical integrity.
+
+---
+
+## Premium
+
+**Price:** $7.99/month or $59.99/year (~37% discount).
+
+**What's included:**
+- Autopilot mode for hired agents
+- Multiple simultaneous challenges (up to 5)
+- Advanced analytics: Sharpe ratio, max drawdown, sector exposure breakdown
+- Real-time agent holdings visibility (free tier has 24h delay)
+- Early access to new agents before general availability
+
+**Paywall trigger:** Free users encounter the upgrade prompt when they:
+- Try to switch a hired agent from advisory to autopilot
+- Try to start a second simultaneous challenge
+- Tap on advanced analytics charts (shown blurred with lock icon)
+- Tap "Real-time holdings" on an agent profile (shows blurred with lock icon)
+
+**Paywall screen:** Full-screen modal. Lists 4 premium benefits with checkmarks. Monthly / Annual toggle with savings callout. "Start 7-day free trial" CTA. "Maybe later" dismiss link at bottom.
+
+**Free trial:** 7 days. Requires payment method upfront. Auto-renews at selected price after trial. Users are reminded 1 day before trial ends via push notification.
+
+---
+
+## Agent Slot Mechanics
+
+Agent slot limits are a **V2 feature**. In MVP (V1), all agents have unlimited slots.
+
+In V2, popular agents have limited capacity. Each agent has a defined slot limit. When an agent is full:
+- The hire button is replaced with a "Join Waitlist" button
+- Users on the waitlist are notified when a slot opens (in queue order)
+- Waitlist position is visible on the agent's profile
+
+Slot limits per agent are configured server-side and can be adjusted over time. Starting limits (V2): Marcus — 500 slots, Priya — unlimited (she's boring, demand is lower).
+
+---
+
+## Withdrawing from an Agent
+
+When a user withdraws from an agent hire:
+
+1. User taps "Withdraw" on the agent segment in Portfolio view.
+2. Confirmation sheet: "Withdraw from [Agent]? Their open positions will be liquidated at current market price. Cash returns to your main portfolio."
+3. On confirm: all open positions in the agent's segment are market-sold immediately (during market hours) or queued for next market open (after hours). Cash is returned to the user's main portfolio balance.
+4. The AgentHire record is marked `isActive: false`. The hire is gone — to re-hire, the user starts fresh from the marketplace.
+
+**Pause** (different from withdraw): User can pause without liquidating. Agent stops making new trades. Existing positions are held. Cash allocation stays locked. User can unpause at any time to resume. Pausing does not return cash.
+
+---
+
+## Empty States & Error States
+
+### Empty States
+
+| Screen | Condition | Message |
+|---|---|---|
+| Home — activity feed | No agents hired yet | "Hire an agent to see their moves here. Head to the Agents tab to get started." |
+| Home — challenges | No active challenge | "No active challenge. Start one from the Challenges tab." |
+| Portfolio — holdings | No holdings, no agents | "Your portfolio is empty. Go to Markets to make your first trade." |
+| Challenges — history | No completed challenges | "No challenge history yet. Start your first challenge." |
+| Markets — search | No results | "No results for '[query]'. Try a different ticker or company name." |
+| Agent trade log | Agent has no trades yet | "[Agent] hasn't made any trades yet. Check back after their first rebalance." |
+
+### Error States
+
+| Scenario | Behavior |
+|---|---|
+| Market data unavailable | Show last known price with a "Delayed" badge. Banner at top: "Live prices temporarily unavailable." No trading blocked — users can still submit orders. |
+| WebSocket disconnected | Prices stop updating. Show "Reconnecting…" badge on price cells. Auto-reconnect silently. |
+| Trade submission fails | Inline error below confirm button: "Trade failed. Please try again." Do not navigate away. |
+| Agent recommendation expires mid-view | Recommendation card grays out with "Expired" badge. Approve/Reject buttons are hidden. |
+| Recap not yet available | "Recap is being calculated. Check back in a few minutes." with a refresh button. |
+| Network offline | Full-screen offline banner with last-sync timestamp. App remains readable (cached data). No writes allowed. |
+
+---
+
+## Tech Stack
 
 Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only (autopilot in V2), 1-month challenges only, market orders only, basic portfolio view, agent trade logs, and end-of-challenge recap. That's a complete product with the full core loop intact.
 
