@@ -318,12 +318,55 @@ Accessible from a gear icon in the top-right of the Portfolio tab.
 - Recommendation expiry reminders (toggle)
 
 **App**
+- What's New (changelog history, current version at top)
 - Rate Mockket
 - Privacy Policy
 - Terms of Service
 
 **Danger Zone**
 - Delete account — requires confirmation ("Type DELETE to confirm"). Deletes user account and all personal data. Trade history is anonymized, not deleted, to preserve leaderboard historical integrity.
+
+---
+
+## App Updates
+
+### Force Update
+
+On every launch, the app fetches a version config from the backend (`/config/app-version`). The config specifies the minimum supported version, the latest version, and the current update mode per platform:
+
+```json
+{
+  "ios": {
+    "minimumVersion": "1.2.0",
+    "latestVersion": "1.5.0",
+    "updateMode": "hard" | "soft" | null
+  },
+  "android": { ... }
+}
+```
+
+If the installed version is below `minimumVersion`, the app responds based on `updateMode`:
+
+**Hard update** — A full-screen blocking screen replaces the app. The user cannot proceed. Title: *"Update Required"*. Body: *"This version of Mockket is no longer supported. Update to keep trading."* One CTA: "Update Now" — deep links to the App Store or Play Store. No dismiss option.
+
+**Soft update** — A non-blocking banner is pinned to the top of Home. *"A new version of Mockket is available."* with an "Update" link and an X to dismiss for the current session. Re-appears on next launch until the user updates.
+
+If `updateMode` is null, nothing is shown regardless of version. This lets the backend silence update prompts during a staged rollout.
+
+### What's Changed
+
+Every time the user opens the app on a new version for the first time, a bottom sheet appears showing what changed. The last-seen version is stored on device. On launch, it is compared against the current binary version — if they differ, the app fetches the changelog for the new version from the backend and shows the sheet once. After the user dismisses, the new version is written to storage and the sheet never appears again for that version.
+
+**Bottom sheet** — Titled *"What's New"* with the version number and release date. Entries are grouped under three labels: **New**, **Improved**, and **Fixed**. Single "Got it" CTA to dismiss.
+
+**Settings entry** — Settings > App > What's New shows full changelog history for recent versions, with the current version at top. Accessible at any time.
+
+**Backend model** — Changelog content is managed server-side so copy can be corrected after release without a new app version:
+
+```
+AppVersion { version, platform: "ios"|"android"|"both", releaseDate, entries[] }
+ChangelogEntry { type: "new"|"improved"|"fixed", text }
+```
 
 ---
 
