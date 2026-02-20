@@ -9,6 +9,7 @@ import { tradesRouter } from './routes/trades'
 import { recommendationsRouter } from './routes/recommendations'
 import { challengesRouter } from './routes/challenges'
 import { webhooksRouter } from './routes/webhooks'
+import { configRouter } from './routes/config'
 
 dotenv.config()
 
@@ -28,6 +29,7 @@ app.use('/trades', tradesRouter)
 app.use('/recommendations', recommendationsRouter)
 app.use('/challenges', challengesRouter)
 app.use('/webhooks', webhooksRouter)
+app.use('/config', configRouter)
 
 app.use(errorHandler)
 
