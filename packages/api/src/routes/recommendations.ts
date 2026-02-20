@@ -45,7 +45,8 @@ recommendationsRouter.patch('/:id', requireAuth, async (req, res) => {
   }
 
   const { rows } = await db.query(
-    `SELECT * FROM agent_recommendations
+    `SELECT id, agent_id, agent_hire_id, ticker, action, quantity, rationale, challenge_id, expires_at
+     FROM agent_recommendations
      WHERE id = $1 AND user_id = $2 AND status = 'pending'`,
     [req.params.id, userId]
   )
@@ -56,11 +57,7 @@ recommendationsRouter.patch('/:id', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Recommendation has expired' })
   }
 
-  await db.query(
-    `UPDATE agent_recommendations SET status = $1, acted_at = NOW() WHERE id = $2`,
-    [action, rec.id]
-  )
-
+  // Execute trade BEFORE updating status — if trade fails, recommendation stays pending so user can retry
   if (action === 'approved') {
     const quote = await getQuote(rec.ticker)
     const price = rec.action === 'buy' ? quote.ask : quote.bid
@@ -76,6 +73,12 @@ recommendationsRouter.patch('/:id', requireAuth, async (req, res) => {
       challengeId: rec.challenge_id,
     })
   }
+
+  // Update status only after trade succeeds (or for rejected, unconditionally)
+  await db.query(
+    `UPDATE agent_recommendations SET status = $1, acted_at = NOW() WHERE id = $2`,
+    [action, rec.id]
+  )
 
   res.json({ ok: true })
 })
