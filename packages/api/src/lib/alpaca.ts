@@ -50,7 +50,7 @@ export async function getMarketStatus(): Promise<'open' | 'closed' | 'pre-market
   const etHour = parseInt(new Intl.DateTimeFormat('en-US', {
     hour: 'numeric', hour12: false, timeZone: 'America/New_York'
   }).format(now))
-  if (etHour >= 4 && etHour < 9) return 'pre-market'
-  if (etHour >= 16 && etHour < 20) return 'after-hours'
+  if (etHour >= 4 && etHour <= 9) return 'pre-market'   // 4 AM – 9:59 AM (market opens at 9:30)
+  if (etHour >= 16 && etHour <= 20) return 'after-hours' // 4 PM – 8:59 PM
   return 'closed'
 }
