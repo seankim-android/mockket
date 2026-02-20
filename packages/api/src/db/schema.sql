@@ -163,3 +163,15 @@ CREATE TABLE fcm_tokens (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(token)
 );
+
+-- Indexes for common query patterns
+CREATE INDEX idx_trades_user_id_executed_at ON trades(user_id, executed_at DESC);
+CREATE INDEX idx_day_trades_user_id_traded_at ON day_trades(user_id, traded_at DESC);
+CREATE INDEX idx_agent_recommendations_user_status ON agent_recommendations(user_id, status);
+CREATE INDEX idx_challenges_user_id ON challenges(user_id);
+CREATE INDEX idx_challenges_opponent_user_id ON challenges(opponent_user_id);
+
+-- Partial unique index: main portfolio holdings (no agent, no challenge)
+CREATE UNIQUE INDEX idx_holdings_main_portfolio
+  ON holdings(user_id, ticker)
+  WHERE agent_hire_id IS NULL AND challenge_id IS NULL;
