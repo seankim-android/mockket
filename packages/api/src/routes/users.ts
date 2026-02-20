@@ -10,10 +10,19 @@ usersRouter.post('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const { email, displayName } = req.body
 
+  const trimmedName = typeof displayName === 'string' ? displayName.trim() : ''
+  if (!trimmedName || trimmedName.length > 50) {
+    return res.status(400).json({ error: 'displayName must be a non-empty string (max 50 characters)' })
+  }
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!email || typeof email !== 'string' || !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'email must be a valid email address' })
+  }
+
   await db.query(
     `INSERT INTO users (id, email, display_name) VALUES ($1, $2, $3)
      ON CONFLICT (id) DO NOTHING`,
-    [userId, email, displayName]
+    [userId, email, trimmedName]
   )
 
   // Initialize FTUE progress
@@ -32,12 +41,6 @@ usersRouter.post('/', requireAuth, async (req, res) => {
   void (async () => {
     await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000))
     try {
-      const { rows: prefs } = await db.query(
-        `SELECT np.morning_briefs FROM notification_prefs np WHERE np.user_id = $1`,
-        [userId]
-      )
-      // Always send intro regardless of morning_briefs pref — it's onboarding
-      void prefs
       await sendPushToUser(
         userId,
         'Marcus Bull Chen',
@@ -74,13 +77,23 @@ usersRouter.patch('/me', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const { displayName, leaderboardOptIn } = req.body
 
+  if (displayName !== undefined) {
+    const trimmed = typeof displayName === 'string' ? displayName.trim() : ''
+    if (!trimmed || trimmed.length > 50) {
+      return res.status(400).json({ error: 'displayName must be a non-empty string (max 50 characters)' })
+    }
+  }
+  if (leaderboardOptIn !== undefined && typeof leaderboardOptIn !== 'boolean') {
+    return res.status(400).json({ error: 'leaderboardOptIn must be a boolean' })
+  }
+
   await db.query(
     `UPDATE users SET
        display_name = COALESCE($1, display_name),
        leaderboard_opt_in = COALESCE($2, leaderboard_opt_in),
        updated_at = NOW()
      WHERE id = $3`,
-    [displayName ?? null, leaderboardOptIn ?? null, userId]
+    [displayName !== undefined ? (displayName as string).trim() : null, leaderboardOptIn ?? null, userId]
   )
 
   res.json({ ok: true })
@@ -156,33 +169,46 @@ usersRouter.post('/fcm-token', requireAuth, async (req, res) => {
 // POST /portfolio/reset — IAP-gated portfolio reset
 usersRouter.post('/portfolio/reset', requireAuth, async (_req, res) => {
   const userId = res.locals.userId
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
 
-  // Block if any active challenge
-  const { rows: activeChallenges } = await db.query(
-    `SELECT id FROM challenges WHERE user_id = $1 AND status = 'active' LIMIT 1`,
-    [userId]
-  )
-  if (activeChallenges.length > 0) {
-    return res.status(400).json({ error: 'Cannot reset while an active challenge is running' })
+    // Block if any active challenge — checked inside transaction to prevent TOCTOU
+    const { rows: activeChallenges } = await client.query(
+      `SELECT id FROM challenges WHERE user_id = $1 AND status = 'active' LIMIT 1`,
+      [userId]
+    )
+    if (activeChallenges.length > 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Cannot reset while an active challenge is running' })
+    }
+
+    // Reset cash and increment reset_count
+    await client.query(
+      `UPDATE users SET portfolio_cash = 100000, reset_count = reset_count + 1, updated_at = NOW()
+       WHERE id = $1`,
+      [userId]
+    )
+
+    // Pause all active agent hires
+    await client.query(
+      `UPDATE agent_hires SET is_paused = TRUE, paused_at = NOW()
+       WHERE user_id = $1 AND is_active = TRUE`,
+      [userId]
+    )
+
+    // Clear main portfolio holdings (preserve agent and challenge holdings)
+    await client.query(
+      `DELETE FROM holdings WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
+      [userId]
+    )
+
+    await client.query('COMMIT')
+    res.json({ ok: true })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
   }
-
-  // Reset cash, pause all agent hires, increment reset_count
-  await db.query(
-    `UPDATE users SET portfolio_cash = 100000, reset_count = reset_count + 1, updated_at = NOW()
-     WHERE id = $1`,
-    [userId]
-  )
-  await db.query(
-    `UPDATE agent_hires SET is_paused = TRUE, paused_at = NOW()
-     WHERE user_id = $1 AND is_active = TRUE`,
-    [userId]
-  )
-
-  // Clear main portfolio holdings (preserve agent and challenge holdings)
-  await db.query(
-    `DELETE FROM holdings WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
-    [userId]
-  )
-
-  res.json({ ok: true })
 })

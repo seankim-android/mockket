@@ -1,12 +1,17 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { executeTrade } from '../lib/ledger'
-import { getQuote, getMarketStatus } from '../lib/alpaca'
+import { getQuote } from '../lib/alpaca'
 import { db } from '../db/client'
 import { marcusBullChen, priyaSharma } from '@mockket/agents'
 import { sendPushToUser } from '../lib/fcm'
 
 export const tradesRouter = Router()
+
+const AGENT_MAP: Record<string, typeof marcusBullChen> = {
+  'marcus-bull-chen': marcusBullChen,
+  'priya-sharma': priyaSharma,
+}
 
 // POST /trades — execute a market order
 tradesRouter.post('/', requireAuth, async (req, res) => {
@@ -18,26 +23,48 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'ticker, action (buy/sell), and quantity (positive number) are required' })
   }
 
-  const status = await getMarketStatus()
-  const quote = await getQuote(ticker)
+  let quote
+  try {
+    quote = await getQuote(ticker)
+  } catch {
+    return res.status(400).json({ error: `Unable to get quote for ${ticker}` })
+  }
 
   // Buy at ask, sell at bid
   const price = action === 'buy' ? quote.ask : quote.bid
 
-  // TODO: after-hours order queuing — for MVP, execute immediately at current price (paper trading)
-  void status // suppress unused-var; status used in future queuing logic
-
   await executeTrade({ userId, ticker, action, quantity, price, challengeId, agentHireId })
 
-  // Record day trade entry for PDT warning tracking
-  await db.query(
-    `INSERT INTO day_trades (user_id, ticker) VALUES ($1, $2)`,
-    [userId, ticker]
+  // PDT day trade tracking — only insert when a round-trip occurs on the same calendar day
+  const oppositeAction = action === 'buy' ? 'sell' : 'buy'
+  const { rows: oppRows } = await db.query(
+    `SELECT id FROM trades
+     WHERE user_id = $1 AND ticker = $2 AND action = $3
+     AND DATE(executed_at AT TIME ZONE 'America/New_York') = (NOW() AT TIME ZONE 'America/New_York')::date
+     LIMIT 1`,
+    [userId, ticker, oppositeAction]
   )
+  if (oppRows.length > 0) {
+    // Prevent double-counting: only insert if no day_trades row exists for this ticker today
+    const { rows: existingDt } = await db.query(
+      `SELECT id FROM day_trades
+       WHERE user_id = $1 AND ticker = $2
+       AND DATE(traded_at AT TIME ZONE 'America/New_York') = (NOW() AT TIME ZONE 'America/New_York')::date
+       LIMIT 1`,
+      [userId, ticker]
+    )
+    if (existingDt.length === 0) {
+      await db.query(
+        `INSERT INTO day_trades (user_id, ticker) VALUES ($1, $2)`,
+        [userId, ticker]
+      )
+    }
+  }
 
   const { rows: dtRows } = await db.query(
+    // Use 7 calendar days to safely cover the 5-business-day PDT window
     `SELECT COUNT(*) FROM day_trades
-     WHERE user_id = $1 AND traded_at > NOW() - INTERVAL '5 days'`,
+     WHERE user_id = $1 AND traded_at > NOW() - INTERVAL '7 days'`,
     [userId]
   )
   const dayTradeCount = Number(dtRows[0].count)
@@ -54,10 +81,18 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
         [userId]
       )
 
+      const { rows: holdingsRows } = await db.query(
+        `SELECT COALESCE(SUM(quantity * avg_cost), 0) as holdings_value
+         FROM holdings
+         WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
+        [userId]
+      )
+      const holdingsValue = holdingsRows[0].holdings_value
+
       const tradeValue = quantity * price
       for (const hire of hires) {
         try {
-          const portfolioValue = Number(hire.portfolio_cash)
+          const portfolioValue = Number(hire.portfolio_cash) + Number(holdingsValue)
           const isBigTrade = portfolioValue > 0 && tradeValue / portfolioValue > 0.03
 
           // Check ticker overlap (agent traded this ticker in the last 7 days)
@@ -77,7 +112,7 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
             if (hoursSince < 24) continue
           }
 
-          const agent = hire.agent_id === 'marcus-bull-chen' ? marcusBullChen : priyaSharma
+          const agent = AGENT_MAP[hire.agent_id]
           if (!agent) continue
 
           const reaction = agent.react({ ticker, action, quantity, priceAtExecution: price } as any)

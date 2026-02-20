@@ -31,6 +31,9 @@ async function runAgentRebalance(agentId: string) {
 
       const tickers = holdingRows.map((h: any) => h.ticker)
       const prices = tickers.length > 0 ? await getQuotes(tickers) : []
+      // NOTE: priceMap uses mid price for agent rebalance decisions. MarketData.prices is typed
+      // as Record<string, number> so we cannot pass ask/bid objects without updating both agent
+      // modules (marcus, priya) which access prices[ticker] as a plain number. Tracked as #18.
       const priceMap = Object.fromEntries(prices.map(p => [p.ticker, p.mid]))
 
       const portfolio = {
@@ -82,4 +85,14 @@ export function startAgentCrons() {
       runAgentRebalance('priya-sharma'),
     ])
   }, { timezone: 'America/New_York' })
+
+  // Crypto: every 6 hours, 24/7 (no timezone restriction)
+  // Only run agents that handle crypto assets
+  const CRYPTO_AGENTS = AGENTS.filter(a => a.assetClasses.includes('crypto'))
+
+  cron.schedule('0 */6 * * *', async () => {
+    await Promise.allSettled(
+      CRYPTO_AGENTS.map(a => runAgentRebalance(a.id))
+    )
+  })
 }

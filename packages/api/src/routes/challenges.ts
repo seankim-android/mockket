@@ -53,10 +53,13 @@ challengesRouter.post('/', requireAuth, async (req, res) => {
 // GET /challenges/leaderboard — top 50 by all-time return
 challengesRouter.get('/leaderboard', async (_req, res) => {
   const { rows } = await db.query(
-    `SELECT u.display_name, u.portfolio_cash,
-       ((u.portfolio_cash - 100000) / 100000 * 100) as return_pct
+    `SELECT u.display_name,
+       u.portfolio_cash + COALESCE(SUM(h.quantity * h.avg_cost), 0) AS total_value,
+       ((u.portfolio_cash + COALESCE(SUM(h.quantity * h.avg_cost), 0) - 100000) / 100000 * 100) AS return_pct
      FROM users u
+     LEFT JOIN holdings h ON h.user_id = u.id AND h.agent_hire_id IS NULL AND h.challenge_id IS NULL
      WHERE u.leaderboard_opt_in = TRUE
+     GROUP BY u.id, u.display_name, u.portfolio_cash
      ORDER BY return_pct DESC
      LIMIT 50`
   )
@@ -66,7 +69,8 @@ challengesRouter.get('/leaderboard', async (_req, res) => {
 // GET /challenges/invite/:token — resolve invite token (no auth required)
 challengesRouter.get('/invite/:token', async (req, res) => {
   const { rows } = await db.query(
-    `SELECT id, user_id, duration, starting_balance, status, created_at
+    `SELECT id, user_id, duration, starting_balance, status, created_at,
+       (status = 'pending' AND created_at > NOW() - INTERVAL '24 hours') AS is_acceptable
      FROM challenges WHERE invite_token = $1`,
     [req.params.token]
   )
@@ -78,7 +82,8 @@ challengesRouter.get('/invite/:token', async (req, res) => {
 challengesRouter.post('/invite/:token/accept', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const { rows } = await db.query(
-    `SELECT * FROM challenges WHERE invite_token = $1 AND status = 'pending'`,
+    `SELECT * FROM challenges WHERE invite_token = $1 AND status = 'pending'
+     AND created_at > NOW() - INTERVAL '24 hours'`,
     [req.params.token]
   )
   if (!rows[0]) return res.status(404).json({ error: 'Invalid or expired invite' })
@@ -110,11 +115,17 @@ challengesRouter.post('/invite/:token/accept', requireAuth, async (req, res) => 
       return res.status(400).json({ error: 'Insufficient funds' })
     }
 
-    await client.query(
+    // Guard against double-accept race: only succeed if still pending
+    const { rowCount: challengeRowCount } = await client.query(
       `UPDATE challenges SET opponent_user_id = $1, status = 'active',
-         started_at = NOW(), ends_at = $2 WHERE id = $3`,
+         started_at = NOW(), ends_at = $2
+       WHERE id = $3 AND status = 'pending'`,
       [userId, endsAt, challenge.id]
     )
+    if ((challengeRowCount ?? 0) === 0) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'Challenge already accepted' })
+    }
 
     await client.query('COMMIT')
   } catch (err) {
@@ -128,12 +139,27 @@ challengesRouter.post('/invite/:token/accept', requireAuth, async (req, res) => 
 })
 
 // GET /challenges — list user's challenges (including as opponent)
-challengesRouter.get('/', requireAuth, async (_req, res) => {
+challengesRouter.get('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
-  const { rows } = await db.query(
-    `SELECT * FROM challenges WHERE user_id = $1 OR opponent_user_id = $1 ORDER BY created_at DESC`,
-    [userId]
-  )
+  const before = req.query.before as string | undefined
+  if (before !== undefined && isNaN(Date.parse(before))) {
+    return res.status(400).json({ error: 'before must be a valid ISO timestamp' })
+  }
+  const limit = 20
+
+  const { rows } = before
+    ? await db.query(
+        `SELECT * FROM challenges
+         WHERE (user_id = $1 OR opponent_user_id = $1) AND created_at < $2
+         ORDER BY created_at DESC LIMIT $3`,
+        [userId, before, limit]
+      )
+    : await db.query(
+        `SELECT * FROM challenges
+         WHERE user_id = $1 OR opponent_user_id = $1
+         ORDER BY created_at DESC LIMIT $2`,
+        [userId, limit]
+      )
   res.json(rows)
 })
 

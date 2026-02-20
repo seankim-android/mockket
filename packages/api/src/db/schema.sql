@@ -8,7 +8,8 @@ CREATE TABLE users (
   reset_count INTEGER NOT NULL DEFAULT 0,
   leaderboard_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_rc_event_at TIMESTAMPTZ
 );
 
 -- Holdings: current positions per user (or agent segment)
