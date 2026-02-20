@@ -1,4 +1,4 @@
-import type { Trade } from '@mockket/shared'
+import type { Trade, ProposedTrade } from '@mockket/shared'
 import type { AgentModule, Portfolio, MarketData } from '../types'
 
 export const priyaSharma: AgentModule = {
@@ -21,5 +21,12 @@ export const priyaSharma: AgentModule = {
 
   react(userTrade: Trade): string {
     return `I wouldn't have done that on $${userTrade.ticker}, but I respect the conviction.`
+  },
+
+  preview(proposed: ProposedTrade): string {
+    if (proposed.action === 'buy') {
+      return `I'd want to check the P/E before committing to $${proposed.ticker}. Patience is free.`
+    }
+    return `Selling $${proposed.ticker}? Make sure you're not selling discipline, not just a position.`
   },
 }
