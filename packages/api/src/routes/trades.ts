@@ -11,8 +11,8 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const { ticker, action, quantity, challengeId, agentHireId } = req.body
 
-  if (!ticker || !action || !quantity) {
-    return res.status(400).json({ error: 'ticker, action, and quantity are required' })
+  if (!ticker || !['buy', 'sell'].includes(action) || typeof quantity !== 'number' || quantity <= 0) {
+    return res.status(400).json({ error: 'ticker, action (buy/sell), and quantity (positive number) are required' })
   }
 
   const status = await getMarketStatus()
@@ -21,10 +21,8 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   // Buy at ask, sell at bid
   const price = action === 'buy' ? quote.ask : quote.bid
 
-  // Queue after-hours orders (stored as pending, not executed immediately)
-  if (status !== 'open' && action !== undefined) {
-    // TODO: queued order table — for MVP, still execute at current price (paper trading)
-  }
+  // TODO: after-hours order queuing — for MVP, execute immediately at current price (paper trading)
+  void status // suppress unused-var; status used in future queuing logic
 
   await executeTrade({ userId, ticker, action, quantity, price, challengeId, agentHireId })
 
