@@ -40,7 +40,7 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   void (async () => {
     try {
       const { rows: hires } = await db.query(
-        `SELECT ah.agent_id, u.portfolio_cash FROM agent_hires ah
+        `SELECT ah.id, ah.agent_id, ah.last_reaction_at, u.portfolio_cash FROM agent_hires ah
          JOIN users u ON u.id = ah.user_id
          WHERE ah.user_id = $1 AND ah.is_active = TRUE AND ah.is_paused = FALSE`,
         [userId]
@@ -62,11 +62,24 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
 
           if (!isBigTrade && !hasOverlap) continue
 
+          // Rate limit: max 1 reaction per agent per day
+          if (hire.last_reaction_at) {
+            const lastReaction = new Date(hire.last_reaction_at)
+            const hoursSince = (Date.now() - lastReaction.getTime()) / (1000 * 60 * 60)
+            if (hoursSince < 24) continue
+          }
+
           const agent = hire.agent_id === 'marcus-bull-chen' ? marcusBullChen : priyaSharma
           if (!agent) continue
 
           const reaction = agent.react({ ticker, action, quantity, priceAtExecution: price } as any)
           await sendPushToUser(userId, agent.shortName, reaction, undefined, db)
+
+          // Record reaction timestamp
+          await db.query(
+            `UPDATE agent_hires SET last_reaction_at = NOW() WHERE id = $1`,
+            [hire.id]
+          )
         } catch (err) {
           console.error(`[reactions] Failed for agent ${hire.agent_id}:`, err)
         }

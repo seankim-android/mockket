@@ -95,11 +95,34 @@ challengesRouter.post('/invite/:token/accept', requireAuth, async (req, res) => 
   if (challenge.duration === '1m') endsAt.setMonth(endsAt.getMonth() + 1)
   if (challenge.duration === '3m') endsAt.setMonth(endsAt.getMonth() + 3)
 
-  await db.query(
-    `UPDATE challenges SET opponent_user_id = $1, status = 'active',
-       started_at = NOW(), ends_at = $2 WHERE id = $3`,
-    [userId, endsAt, challenge.id]
-  )
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+
+    // Deduct starting balance from accepting user atomically
+    const { rowCount } = await client.query(
+      `UPDATE users SET portfolio_cash = portfolio_cash - $1
+       WHERE id = $2 AND portfolio_cash >= $1`,
+      [challenge.starting_balance, userId]
+    )
+    if ((rowCount ?? 0) === 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Insufficient funds' })
+    }
+
+    await client.query(
+      `UPDATE challenges SET opponent_user_id = $1, status = 'active',
+         started_at = NOW(), ends_at = $2 WHERE id = $3`,
+      [userId, endsAt, challenge.id]
+    )
+
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 
   res.json({ ok: true })
 })

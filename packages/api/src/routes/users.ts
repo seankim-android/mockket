@@ -80,22 +80,29 @@ usersRouter.get('/ftue', requireAuth, async (_req, res) => {
   res.json(rows[0] ?? {})
 })
 
+const ALLOWED_FTUE_FIELDS = new Set([
+  'viewed_marcus_profile', 'made_first_trade', 'started_challenge',
+  'agent_intro_sent', 'first_trade_annotation_shown', 'day2_card_shown'
+])
+
 // PATCH /users/ftue — update FTUE progress
 usersRouter.patch('/ftue', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const fields = req.body as Record<string, unknown>
 
-  if (Object.keys(fields).length === 0) {
-    return res.status(400).json({ error: 'No fields provided' })
+  const safeEntries = Object.entries(fields).filter(([k]) => ALLOWED_FTUE_FIELDS.has(k))
+
+  if (safeEntries.length === 0) {
+    return res.status(400).json({ error: 'No valid fields provided' })
   }
 
-  const setClauses = Object.keys(fields)
-    .map((k, i) => `${k} = $${i + 2}`)
+  const setClauses = safeEntries
+    .map(([k], i) => `${k} = $${i + 2}`)
     .join(', ')
 
   await db.query(
     `UPDATE ftue_progress SET ${setClauses} WHERE user_id = $1`,
-    [userId, ...Object.values(fields)]
+    [userId, ...safeEntries.map(([, v]) => v)]
   )
 
   res.json({ ok: true })
@@ -141,6 +148,12 @@ usersRouter.post('/portfolio/reset', requireAuth, async (_req, res) => {
   await db.query(
     `UPDATE agent_hires SET is_paused = TRUE, paused_at = NOW()
      WHERE user_id = $1 AND is_active = TRUE`,
+    [userId]
+  )
+
+  // Clear main portfolio holdings (preserve agent and challenge holdings)
+  await db.query(
+    `DELETE FROM holdings WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
     [userId]
   )
 

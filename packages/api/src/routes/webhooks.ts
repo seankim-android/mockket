@@ -5,6 +5,11 @@ export const webhooksRouter = Router()
 
 // RevenueCat webhook — update premium status
 webhooksRouter.post('/revenuecat', async (req, res) => {
+  const authHeader = req.headers['authorization']
+  if (!authHeader || authHeader !== `Bearer ${process.env.REVENUECAT_WEBHOOK_SECRET}`) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
   const { event } = req.body
   if (!event) return res.status(400).end()
 

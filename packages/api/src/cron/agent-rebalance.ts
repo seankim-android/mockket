@@ -76,8 +76,10 @@ async function runAgentRebalance(agentId: string) {
 
 // Stocks: daily at 9:35am ET (5 min after market open)
 export function startAgentCrons() {
-  cron.schedule('35 9 * * 1-5', () => {
-    runAgentRebalance('marcus-bull-chen')
-    runAgentRebalance('priya-sharma')
+  cron.schedule('35 9 * * 1-5', async () => {
+    await Promise.allSettled([
+      runAgentRebalance('marcus-bull-chen'),
+      runAgentRebalance('priya-sharma'),
+    ])
   }, { timezone: 'America/New_York' })
 }
