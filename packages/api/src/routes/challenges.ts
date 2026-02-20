@@ -10,26 +10,44 @@ challengesRouter.post('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const { agentId, duration, startingBalance, isPublic } = req.body
 
-  if (!duration || !startingBalance) {
-    return res.status(400).json({ error: 'duration and startingBalance required' })
+  if (!duration || !['1w', '1m', '3m'].includes(duration)) {
+    return res.status(400).json({ error: 'duration must be 1w, 1m, or 3m' })
+  }
+  if (typeof startingBalance !== 'number' || startingBalance <= 0) {
+    return res.status(400).json({ error: 'startingBalance must be a positive number' })
   }
 
   const inviteToken = randomBytes(8).toString('hex')
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
 
-  const { rows } = await db.query(
-    `INSERT INTO challenges
-       (user_id, agent_id, duration, starting_balance, status, invite_token, is_public)
-     VALUES ($1, $2, $3, $4, 'active', $5, $6) RETURNING *`,
-    [userId, agentId ?? null, duration, startingBalance, inviteToken, isPublic ?? false]
-  )
+    // Deduct cash — fails if insufficient
+    const { rowCount } = await client.query(
+      `UPDATE users SET portfolio_cash = portfolio_cash - $1
+       WHERE id = $2 AND portfolio_cash >= $1`,
+      [startingBalance, userId]
+    )
+    if ((rowCount ?? 0) === 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Insufficient cash' })
+    }
 
-  // Deduct starting balance from user's cash
-  await db.query(
-    `UPDATE users SET portfolio_cash = portfolio_cash - $1 WHERE id = $2`,
-    [startingBalance, userId]
-  )
+    const { rows } = await client.query(
+      `INSERT INTO challenges
+         (user_id, agent_id, duration, starting_balance, status, invite_token, is_public)
+       VALUES ($1, $2, $3, $4, 'pending', $5, $6) RETURNING *`,
+      [userId, agentId ?? null, duration, startingBalance, inviteToken, isPublic ?? false]
+    )
 
-  res.json(rows[0])
+    await client.query('COMMIT')
+    res.json(rows[0])
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 })
 
 // GET /challenges/leaderboard — top 50 by all-time return
@@ -66,9 +84,16 @@ challengesRouter.post('/invite/:token/accept', requireAuth, async (req, res) => 
   if (!rows[0]) return res.status(404).json({ error: 'Invalid or expired invite' })
 
   const challenge = rows[0]
+
+  // Cannot accept your own challenge
+  if (challenge.user_id === userId) {
+    return res.status(403).json({ error: 'Cannot accept your own challenge' })
+  }
+
   const endsAt = new Date()
   if (challenge.duration === '1w') endsAt.setDate(endsAt.getDate() + 7)
   if (challenge.duration === '1m') endsAt.setMonth(endsAt.getMonth() + 1)
+  if (challenge.duration === '3m') endsAt.setMonth(endsAt.getMonth() + 3)
 
   await db.query(
     `UPDATE challenges SET opponent_user_id = $1, status = 'active',
@@ -79,11 +104,11 @@ challengesRouter.post('/invite/:token/accept', requireAuth, async (req, res) => 
   res.json({ ok: true })
 })
 
-// GET /challenges — list user's challenges
+// GET /challenges — list user's challenges (including as opponent)
 challengesRouter.get('/', requireAuth, async (_req, res) => {
   const userId = res.locals.userId
   const { rows } = await db.query(
-    `SELECT * FROM challenges WHERE user_id = $1 ORDER BY created_at DESC`,
+    `SELECT * FROM challenges WHERE user_id = $1 OR opponent_user_id = $1 ORDER BY created_at DESC`,
     [userId]
   )
   res.json(rows)
