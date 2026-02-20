@@ -62,20 +62,22 @@ Mockket is a mobile paper trading app where users invest fake money in real mark
 - Challenge winner is determined by % return, not absolute dollar return.
 - Users can exit a challenge early; it is recorded as a forfeit/loss in challenge history.
 - Advisory mode recommendations from hired agents can apply to the challenge portfolio.
-- Challenges score against the V1 duration of 1 month only (MVP).
+- Challenges support 1-week and 1-month durations in MVP (3-month in V2).
+- Users can challenge an agent or a friend (friend challenges via invite link or username search, must accept within 24h).
 
 **Agent behavior:**
 - Advisory recommendations: max 1 per agent per day per user.
 - Advisory recommendation reasoning is revealed post-trade only (not shown on approval screen).
-- Agent reactions trigger only on user trades >5% of portfolio value, max 1 reaction per agent per day.
+- Agent reactions trigger on: (1) user trades >3% of portfolio value, or (2) user trades a ticker the agent currently holds or recently traded — regardless of size. Max 1 reaction per agent per day.
 - Stock-only agents send one in-character Saturday commentary message on weekends (no trades).
 
 **Agent allocation:**
 - Minimum allocation: $1,000. Maximum allocation: 50% of available cash.
 
 **Leaderboard:**
-- Global leaderboard is opt-in. Users must enable it in settings.
+- Global leaderboard is opt-in to *appear on*. Viewing the leaderboard requires no opt-in.
 - Ranked by 30-day rolling % return on main portfolio.
+- Top 5 preview shown on Home screen. Full top 50 on Challenges tab.
 
 ---
 
@@ -148,8 +150,11 @@ Challenge {
   id, userId, agentId (nullable), opponentUserId (nullable)
   duration: "1w" | "1m" | "3m"
   startingBalance: number        // cash drawn from main portfolio at challenge start
-  status: "active" | "completed" | "forfeited"
+  status: "pending" | "active" | "completed" | "forfeited" | "expired"
+  // "pending" = friend challenge sent, awaiting acceptance
+  // "expired" = friend challenge not accepted within 24h
   isForfeited: boolean           // true if user exited early
+  inviteToken: string (nullable) // for friend challenge invite links
   startedAt, endsAt, completedAt (nullable)
   winnerId (nullable)            // determined by % return
 }
@@ -204,7 +209,8 @@ APPLE_CLIENT_ID            # for Sign in with Apple
 - [ ] Portfolio management (cash balance, holdings, P&L)
 - [ ] Marcus and Priya agent modules
 - [ ] Advisory mode recommendation flow
-- [ ] 1-month challenge creation and scoring
+- [ ] 1-week and 1-month challenge creation and scoring
+- [ ] Friend challenge invite flow (link + username search)
 - [ ] Agent trade log with rationale
 - [ ] End-of-challenge recap screen
 - [ ] Auth (email + Apple + Google)

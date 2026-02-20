@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mockket is a mobile app where users invest fake money in real markets (stocks and crypto) and compete against or hire AI trading agents. Each agent has a name, personality, strategy, and live track record built from real performance data. Users can trade manually, hire agents to manage portions of their portfolio, or do both. The core loop: outperform the market, outperform the agents, learn from the difference.
+Mockket is a mobile app where users trade with $100,000 in paper cash against real market prices — and compete against AI trading agents with real track records. Each agent has a name, personality, and strategy, and has been running against live markets since before you arrived. Users can trade manually, hire agents to manage portions of their portfolio, or do both. The core loop: outperform the agents, then figure out why you didn't.
 
 ---
 
@@ -26,7 +26,7 @@ Paper trading apps are boring because there's nothing at stake and nothing to co
 
 **AI Agents** — Named characters with distinct strategies, personalities, and live track records built from actual performance data over time. Users can hire agents to manage a portion of their portfolio autonomously, receive trade recommendations from them in advisory mode, or simply compete against them in challenges.
 
-**Challenges** — Fixed-duration competitions (1 week, 1 month, 3 months) where users pit their portfolio against an agent or another user. Winner is whoever has higher returns at the end.
+**Challenges** — Fixed-duration competitions (1 week, 1 month, 3 months) where users pit their portfolio against an agent or another user. Winner is whoever has higher % returns at the end. Short challenges (1 week) are designed for fast feedback loops; longer ones for sustained competition.
 
 **Agent Marketplace** — A browsable roster of agents with profile cards showing strategy, personality, track record, risk profile, and current availability. Popular agents with strong track records can have limited slots, creating organic scarcity.
 
@@ -81,13 +81,15 @@ Live stock prices via Alpaca API during market hours. Live crypto prices 24/7 vi
 
 ### Challenges
 
-Users start a challenge against any agent. Fixed durations: 1 week, 1 month, 3 months (1 month only in MVP). The user allocates a cash amount from their main portfolio — this creates a separate challenge portfolio for the duration of the competition. The winner is whoever achieves the higher % return by the end date.
+Users start a challenge against any agent or another user. Fixed durations: 1 week, 1 month, 3 months (1-week and 1-month in MVP). The user allocates a cash amount from their main portfolio — this creates a separate challenge portfolio for the duration of the competition. The winner is whoever achieves the higher % return by the end date.
 
-Advisory mode recommendations from hired agents can apply to the challenge portfolio. The agent competes on its own separate simulated portfolio starting at the same balance.
+**Agent challenges:** The agent competes on its own separate simulated portfolio starting at the same balance. Advisory mode recommendations from hired agents can apply to the user's challenge portfolio.
+
+**Friend challenges (MVP):** Users can challenge another Mockket user directly by sending them a challenge invite (shareable link or in-app username search). Both sides start with the same balance for the same duration. The challenged user must accept within 24 hours or the invite expires. Friend challenges appear in both users' challenge history. No premium required — friend challenges are free tier.
 
 Users can exit a challenge early; doing so records it as a forfeit/loss in their challenge history. Portfolio resets are blocked while any challenge is active.
 
-A global leaderboard ranks opt-in users by 30-day rolling % return on their main portfolio. Users must enable leaderboard visibility in settings.
+**Leaderboard:** The Challenges tab includes a public leaderboard of the top 50 users by 30-day rolling % return on their main portfolio. A preview of the top 5 is visible on the Home screen to all users. Appearing on the leaderboard is opt-in (toggle in Settings, off by default) — users who haven't opted in are shown as anonymous placeholders. The leaderboard is visible to everyone regardless of opt-in status; only appearing on it requires opting in.
 
 End-of-challenge recap screen breaks down who won, what trades decided it, and the agent's in-character reaction to the outcome.
 
@@ -97,7 +99,12 @@ Each agent exposes a complete trade log showing every action taken: timestamp, t
 
 ### Agent Reactions
 
-After a user makes a trade that exceeds 5% of their portfolio value, their hired agent reacts with a short in-character blurb (max one reaction per agent per day). Marcus: "Bold move on $TSLA. Let's see if you can keep up." Priya: "I wouldn't have done that, but I respect the conviction." This keeps the app feeling alive between sessions.
+Hired agents react in two situations:
+
+1. **Big trade:** User makes a trade exceeding 3% of their portfolio value. The threshold is 3% (not 5%) to ensure reactions happen regularly.
+2. **Ticker overlap:** User trades a ticker the agent currently holds or recently traded — regardless of size. The agent always has something to say when you touch their position.
+
+Response: a short in-character blurb, max one reaction per agent per day. Marcus: "Bold move on $TSLA. Let's see if you can keep up." Priya: "I wouldn't have done that, but I respect the conviction." This keeps the app feeling alive between sessions.
 
 Stock-only agents go silent on trades during weekends when markets are closed, but send one in-character Saturday commentary — reflecting on the week or flagging what they're watching for Monday.
 
@@ -125,7 +132,7 @@ No ads. The product positioning is a serious-but-fun finance app and ads undermi
 
 ## Key Screens
 
-**Home** — Portfolio value, active challenge standings, agent activity feed showing what your hired agents did today.
+**Home** — Portfolio value, active challenge standings, agent activity feed showing what your hired agents did today, leaderboard preview (top 5 users by 30-day return).
 
 **Markets** — Stock and crypto search, watchlist, real-time prices with market status indicator. Crypto visible 24/7, stocks show after-hours data with visual indicator.
 
@@ -137,7 +144,7 @@ No ads. The product positioning is a serious-but-fun finance app and ads undermi
 
 **Portfolio** — Total P&L, segment breakdown (self vs each agent), holdings list, performance chart over time, reset option.
 
-**Challenges** — Active challenges with live standings, challenge history, start new challenge flow.
+**Challenges** — Active challenges with live standings, challenge history, start new challenge flow (vs agent or vs friend), full leaderboard (top 50, opt-in to appear).
 
 **Trade Comparison** — Side-by-side view of user trades vs agent trades for any challenge period, with outcome annotations.
 
@@ -165,8 +172,8 @@ No ads. The product positioning is a serious-but-fun finance app and ads undermi
 
 First-time users see a 3-screen welcome flow before landing on Home:
 
-1. **Welcome** — App name, one-line value prop ("Invest fake money. Beat real AI."), Get Started button.
-2. **How it works** — Three bullet points with icons: trade with $100k fake cash / hire AI agents or compete against them / learn from the comparison. Skip option.
+1. **Welcome** — App name, one-line value prop ("Outthink the AI. Learn why you lost."), Get Started button.
+2. **How it works** — Three bullet points with icons: trade with $100k paper cash against live prices / challenge AI agents with real track records / see exactly where you diverged and what it cost you. Skip option.
 3. **Notification permission** — "Marcus wants to send you trade tips." Explains advisory mode push notifications with Allow / Not Now options. This is the only place the OS permission prompt is triggered. Users who tap Not Now can enable later from Settings.
 
 After onboarding, user lands on Home. No tutorial overlay — the empty state on Home guides them naturally (see Empty States).
@@ -280,7 +287,7 @@ When a user withdraws from an agent hire:
 
 ## Tech Stack
 
-Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only (autopilot in V2), 1-month challenges only, market orders only, basic portfolio view, agent trade logs, and end-of-challenge recap. That's a complete product with the full core loop intact.
+Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only (autopilot in V2), 1-week and 1-month challenges, agent challenges and friend challenges, market orders only, basic portfolio view, agent trade logs, leaderboard (top 50), and end-of-challenge recap. That's a complete product with the full core loop intact.
 
 V2 adds crypto, The Degen, HODL Hannah, The Quant, Elena, autopilot mode, limit orders, the full agent marketplace with slot mechanics, and the side-by-side trade comparison view.
 
