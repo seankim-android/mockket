@@ -17,7 +17,7 @@ export interface Quote {
 
 // Fetch latest quote for a single ticker
 export async function getQuote(ticker: string): Promise<Quote> {
-  const { data } = await client.get(`/v2/stocks/${ticker}/quotes/latest`)
+  const { data } = await client.get(`/v2/stocks/${encodeURIComponent(ticker)}/quotes/latest`)
   const q = data.quote
   const ask = q.ap  // ask price
   const bid = q.bp  // bid price

@@ -13,7 +13,8 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const { ticker, action, quantity, challengeId, agentHireId } = req.body
 
-  if (!ticker || !['buy', 'sell'].includes(action) || typeof quantity !== 'number' || quantity <= 0) {
+  const TICKER_RE = /^[A-Z0-9]{1,10}$/
+  if (!ticker || !['buy', 'sell'].includes(action) || typeof quantity !== 'number' || quantity <= 0 || !TICKER_RE.test(ticker)) {
     return res.status(400).json({ error: 'ticker, action (buy/sell), and quantity (positive number) are required' })
   }
 
