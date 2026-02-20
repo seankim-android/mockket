@@ -1,5 +1,6 @@
 .claude/
 .omc/
+.worktrees/
 
 # Dependencies
 node_modules/
