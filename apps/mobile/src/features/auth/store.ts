@@ -1,16 +1,25 @@
 import { create } from 'zustand'
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import type { User } from '@mockket/shared'
 
 interface AuthState {
-  user: User | null
-  token: string | null
-  setAuth: (user: User, token: string) => void
+  // Supabase session (contains access_token, refresh_token, user)
+  session: Session | null
+  // App-level user profile (fetched from our DB after auth)
+  profile: User | null
+  isLoading: boolean
+  setSession: (session: Session | null) => void
+  setProfile: (profile: User | null) => void
+  setLoading: (loading: boolean) => void
   clearAuth: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
-  setAuth: (user, token) => set({ user, token }),
-  clearAuth: () => set({ user: null, token: null }),
+  session: null,
+  profile: null,
+  isLoading: true, // true on init — wait for Supabase to restore session
+  setSession: (session) => set({ session }),
+  setProfile: (profile) => set({ profile }),
+  setLoading: (isLoading) => set({ isLoading }),
+  clearAuth: () => set({ session: null, profile: null, isLoading: false }),
 }))
