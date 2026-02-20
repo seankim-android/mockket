@@ -152,6 +152,47 @@ Each agent exposes a complete trade log showing every action taken: timestamp, t
 
 Each hired agent's profile also shows the user's all-time return vs that agent's all-time return — a running answer to "am I actually beating this thing?" Advisory mode users on premium see a recommendation outcome split: of the recommendations they accepted vs ignored, which set performed better and by how much. This is intentionally surfaced only post-hoc, never before the user acts.
 
+### Education
+
+Mockket's educational value is a byproduct of the core loop, not a separate mode. The design principle: surface one concept exactly when it's relevant, never force it, never lecture. Users learn by competing, not by studying.
+
+**Contextual concept cards**
+
+When a user takes an action that has a teachable moment attached, a dismissible one-line card appears inline — never as a modal, never blocking the flow. Examples:
+
+- User buys a stock 1–2 days before its earnings date: *"Earnings in 2 days. Stocks often move sharply after reporting — this is called earnings risk."*
+- User holds a losing position for 14+ days without adding or selling: *"Holding a loser this long can sometimes signal loss aversion — the tendency to avoid realizing a loss even when selling is the right move."*
+- User makes their 2nd day trade in a 5-day window: *"Day trading frequently in a real account under $25k triggers the PDT rule. It doesn't apply here, but it's worth knowing."*
+- User's portfolio is more than 60% in a single sector: *"Your portfolio is heavily concentrated in one sector. Diversification spreads risk across industries."*
+
+Cards are shown at most once per concept per user. They are never shown mid-flow — only after an action completes or on the relevant screen at rest.
+
+**Agent rationale as active teaching**
+
+After the post-trade reveal of an agent's rationale, a one-tap link appears beneath it: *"Why does [concept] matter?"* — e.g. "Why does P/E ratio matter?" or "What is a moving average?" Tapping opens a 3-sentence inline explainer. Depth on demand, never forced. The link only appears when the rationale contains a concept that has a registered explainer; not every rationale generates one.
+
+**In-context glossary**
+
+Financial terms are underlined wherever they appear in the app — in agent rationale logs, trade comparison annotations, stock detail pages, and analytics screens. Tapping any underlined term shows a 2-sentence definition in a small tooltip. No navigation away from the current screen.
+
+Terms covered at minimum: bid/ask spread, P/E ratio, market cap, day trade, short selling, dividend, ex-dividend date, earnings per share, moving average, RSI, MACD, Sharpe ratio, max drawdown, beta, sector exposure.
+
+**"What would [Agent] do?" pre-trade check**
+
+On the trade confirmation screen, users with a hired agent can optionally tap *"Ask [Agent]"* before confirming. The agent responds in character with a brief reaction to the proposed trade — based on the ticker and position size relative to the user's portfolio. This is not advisory mode (which pushes recommendations proactively); this is a passive second opinion the user must opt into. Response is generated from the agent's rule-based logic. Examples: Marcus: "Small position on a breakout name — I'd go bigger, but I get it." Priya: "That P/E is stretched. I'd wait for a pullback." The response does not change based on whether the user proceeds.
+
+This feature is available to all users with at least one hired agent. It does not count against the advisory recommendation daily limit.
+
+**Post-challenge autopsy**
+
+After every completed or forfeited challenge, a detailed autopsy is available from the challenge history screen. It identifies the 1–3 trades that most influenced the outcome — the moments where the divergence was decided. For each moment, it shows: what the user did, what the agent did at the same time, and the outcome of each decision by end of challenge. A one-line plain-language takeaway summarizes each: *"You sold $AAPL on day 3. Marcus held. That single decision accounted for 3.8% of the gap."*
+
+The autopsy is opt-in — accessed via a "See what decided this" button on the recap screen. It is never shown automatically. Users who lost are more likely to engage with it; the CTA copy reflects this: *"See where it slipped away."* For wins: *"See what worked."*
+
+**Loss reflection prompt**
+
+After a challenge loss, a card appears in the Home activity feed (not a modal): *"You lost this challenge by [X]%. Want to see the 3 moments that mattered most?"* with a link to the autopsy. The card appears once and dismisses permanently when tapped or swiped away.
+
 ### Agent Reactions
 
 Hired agents react in two situations:
@@ -167,19 +208,53 @@ Stock-only agents go silent on trades during weekends when markets are closed, b
 
 Available as a one-time IAP ($0.99). Resets the user's cash balance to $100,000. Does not wipe trade history, challenge history, or agent logs. Users who reset frequently will have a visible reset count on their public profile, preserving leaderboard integrity.
 
+### Replay Packs
+
+Replay Packs let users trade a historical market event with $100,000 in paper cash, using real price data from that period. Each pack is a self-contained scenario with a fixed start date, end date, and a brief setup card explaining the market context. Performance in a replay does not affect the main portfolio or leaderboard standing.
+
+Packs at launch: COVID crash (Feb–Apr 2020), 2021 meme stock mania (Jan–Feb 2021), 2022 rate hike cycle (Jan–Dec 2022). New packs added over time, including event-driven scenarios (e.g. a single earnings week for a major stock).
+
+Each pack costs $1.99–$2.99 as a one-time IAP. Packs are included in the premium subscription at no additional cost. Replay results are shareable — a summary card showing return over the period can be shared externally, which drives organic discovery. Agents also "play" each scenario using their rule-based logic, so users can compare their replay performance against an agent's replay performance.
+
 ### Notifications
 
-Push notifications for: advisory mode recommendations, significant portfolio moves (5%+ in a day), challenge milestones, agent reactions, recommendation expirations, end-of-challenge recaps, queued order execution at market open, dividend credits, and Day 2 re-engagement message (if no challenge started).
+Push notifications for: advisory mode recommendations, significant portfolio moves (5%+ in a day), position alerts (individual holding moves ±3% in a session), challenge milestones, leaderboard rank changes (when rank improves or drops by 3+ positions), agent reactions, morning agent brief (see Engagement), recommendation expirations, end-of-challenge recaps, queued order execution at market open, dividend credits, and Day 2 re-engagement message (if no challenge started).
+
+### Engagement & Retention
+
+**Morning agent brief**
+
+Every weekday at 9:15am ET, each user's hired agents send a short in-character push notification previewing what they're watching at market open. This fires only if the user has at least one active hire. It is not a trade recommendation — it is ambient personality that makes agents feel alive between sessions.
+
+Examples: Marcus: *"Volume pre-market on $NVDA. Watching the open."* Priya: *"Nothing new to do today. Patience is the position."* HODL Hannah: *"Still holding. Always holding. GM."*
+
+Users can disable morning briefs per-agent in notification settings. Stock-only agents do not send briefs on weekends.
+
+**Position alerts**
+
+Users can opt in to alerts when any individual holding moves ±3% in a single session. Off by default, enabled per-ticker from the stock detail screen. These are distinct from the portfolio-level 5%+ alert.
+
+**Personal records**
+
+The activity feed and Portfolio screen surface notable personal milestones as they happen: best single-day return, biggest single trade gain, longest challenge win streak, first time beating a specific agent. These are facts, not badges — no XP, no gamification framing. They appear once in the feed and are accessible on the Portfolio screen under a "Your records" section.
+
+**Challenge discovery board**
+
+The Challenges tab includes a browsable feed of recently started public challenges — user vs agent matchups that opted into visibility. Users can tap any listed challenge to see the starting balance, duration, and current standings. This creates ambient competitive pressure and surfaces the app's activity to users without active challenges. Starting a public challenge is opt-in at challenge creation.
+
+**Group/club challenges (V2)**
+
+3–10 users form a group and compete as a team against another group or a designated agent. The group shares a combined portfolio, with each member contributing an equal cash stake. Group performance is tracked separately from individual portfolios. Group challenges are premium-only. This is the highest-leverage social feature for driving word-of-mouth and retention among friend groups and investment clubs.
 
 ---
 
 ## Monetization
 
-**Free tier:** Access to all agents in advisory mode, one active challenge at a time, standard portfolio analytics (win rate, average holding period, best/worst single trade, cash drag, challenge W/L record per agent, percentile rank, all-time return vs each agent), full agent marketplace and logs, agent holdings visible with a 24-hour delay.
+**Free tier:** Access to all agents in advisory mode, one active challenge at a time, standard portfolio analytics (win rate, average holding period, best/worst single trade, cash drag, challenge W/L record per agent, percentile rank, all-time return vs each agent), full agent marketplace and logs, agent holdings visible with a 24-hour delay, challenge discovery board, morning agent briefs.
 
-**Premium tier:** Autopilot mode for agents, multiple simultaneous challenges, advanced analytics (Sharpe ratio, max drawdown charts, sector exposure breakdown, beta vs S&P 500, sector concentration score, advisory recommendation acceptance rate with outcome split), early access to new agents, real-time visibility into agent holdings.
+**Premium tier:** Autopilot mode for agents, multiple simultaneous challenges (up to 5), group/club challenges, advanced analytics (Sharpe ratio, max drawdown charts, sector exposure breakdown, beta vs S&P 500, sector concentration score, advisory recommendation acceptance rate with outcome split), early access to new agents, real-time visibility into agent holdings.
 
-**IAP:** Portfolio reset at $0.99 per reset.
+**IAP:** Portfolio reset at $0.99 per reset. Replay Packs at $1.99–$2.99 per pack (see below).
 
 No ads. The product positioning is a serious-but-fun finance app and ads undermine that.
 
