@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/error'
 import { portfolioRouter } from './routes/portfolio'
 import { tradesRouter } from './routes/trades'
 import { recommendationsRouter } from './routes/recommendations'
+import { challengesRouter } from './routes/challenges'
 
 dotenv.config()
 
@@ -24,6 +25,7 @@ app.get('/health', (_req, res) => res.json({ ok: true }))
 app.use('/portfolio', portfolioRouter)
 app.use('/trades', tradesRouter)
 app.use('/recommendations', recommendationsRouter)
+app.use('/challenges', challengesRouter)
 
 app.use(errorHandler)
 
