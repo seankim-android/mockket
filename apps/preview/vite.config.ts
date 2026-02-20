@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, '../mobile/src'),
       '@mockket/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
     },
   },
 })

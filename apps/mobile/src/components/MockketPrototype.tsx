@@ -136,7 +136,7 @@ const MARKETS = [
 const AGENTS = [
   {
     id: "marcus",
-    name: "Marcus "The Bull" Chen",
+    name: 'Marcus "The Bull" Chen',
     shortName: "Marcus",
     risk: "high" as const,
     strategy: "Momentum · Stocks + Crypto",
