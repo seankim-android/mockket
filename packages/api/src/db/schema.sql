@@ -48,7 +48,8 @@ CREATE TABLE agent_hires (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   is_paused BOOLEAN NOT NULL DEFAULT FALSE,
   hired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  paused_at TIMESTAMPTZ
+  paused_at TIMESTAMPTZ,
+  last_reaction_at TIMESTAMPTZ
 );
 
 -- Agent recommendations
