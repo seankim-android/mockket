@@ -55,13 +55,14 @@ export async function executeTrade(trade: TradeInput): Promise<void> {
       // Sell: reduce holding, return cash at bid price
       const proceeds = trade.quantity * trade.price
 
-      await client.query(
+      const holdingResult = await client.query(
         `UPDATE holdings SET quantity = quantity - $1
          WHERE user_id = $2 AND ticker = $3 AND agent_hire_id IS NOT DISTINCT FROM $4
          AND challenge_id IS NOT DISTINCT FROM $5 AND quantity >= $1`,
         [trade.quantity, trade.userId, trade.ticker,
          trade.agentHireId ?? null, trade.challengeId ?? null]
       )
+      if ((holdingResult.rowCount ?? 0) === 0) throw new Error('Insufficient holding quantity')
 
       await client.query(
         `UPDATE users SET portfolio_cash = portfolio_cash + $1, updated_at = NOW()
@@ -97,21 +98,36 @@ export async function executeTrade(trade: TradeInput): Promise<void> {
 }
 
 export async function getPortfolio(userId: string) {
-  const [userRow, holdingsRow] = await Promise.all([
-    db.query(`SELECT portfolio_cash FROM users WHERE id = $1`, [userId]),
-    db.query(
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ')
+
+    const userRow = await client.query(
+      `SELECT portfolio_cash FROM users WHERE id = $1`,
+      [userId]
+    )
+    if (userRow.rows.length === 0) throw new Error('User not found')
+
+    const holdingsRow = await client.query(
       `SELECT ticker, quantity, avg_cost FROM holdings
        WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
       [userId]
-    ),
-  ])
+    )
 
-  return {
-    cash: Number(userRow.rows[0]?.portfolio_cash ?? 0),
-    holdings: holdingsRow.rows.map(h => ({
-      ticker: h.ticker,
-      quantity: Number(h.quantity),
-      avgCost: Number(h.avg_cost),
-    })),
+    await client.query('COMMIT')
+
+    return {
+      cash: Number(userRow.rows[0].portfolio_cash),
+      holdings: holdingsRow.rows.map(h => ({
+        ticker: h.ticker,
+        quantity: Number(h.quantity),
+        avgCost: Number(h.avg_cost),
+      })),
+    }
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
   }
 }
