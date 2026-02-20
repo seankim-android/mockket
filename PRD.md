@@ -528,5 +528,3 @@ Ship with Marcus and Priya only, stocks only (crypto in V2), advisory mode only 
 
 V2 adds crypto, The Degen, HODL Hannah, The Quant, Elena, autopilot mode, limit orders, the full agent marketplace with slot mechanics, the side-by-side trade comparison view, and pre-market/after-hours trading.
 
-V2 adds crypto, The Degen, HODL Hannah, The Quant, Elena, autopilot mode, limit orders, the full agent marketplace with slot mechanics, and the side-by-side trade comparison view.
-

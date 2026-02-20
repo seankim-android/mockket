@@ -76,8 +76,9 @@ interface Agent {
   rebalanceInterval: "daily" | "6h" | "never";
   
   rebalance(portfolio: Portfolio, marketData: MarketData): Promise<Trade[]>;
-  getRationale(trade: Trade): string;  // in-character explanation for the log
-  react(userTrade: Trade): string;     // in-character reaction to user's move
+  getRationale(trade: Trade): string;        // in-character explanation for the log
+  react(userTrade: Trade): string;           // in-character reaction to user's move (max 1/day)
+  preview(proposed: ProposedTrade): string;  // pre-trade "what would I do?" response (on-demand, not advisory)
 }
 ```
 
