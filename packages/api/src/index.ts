@@ -1,4 +1,5 @@
 import 'express-async-errors'
+import http from 'http'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -10,6 +11,14 @@ import { recommendationsRouter } from './routes/recommendations'
 import { challengesRouter } from './routes/challenges'
 import { webhooksRouter } from './routes/webhooks'
 import { configRouter } from './routes/config'
+import { usersRouter } from './routes/users'
+import { agentHiresRouter } from './routes/agent-hires'
+import { startMarketDataCron } from './cron/sync-market-data'
+import { startAgentCrons } from './cron/agent-rebalance'
+import { startRecommendationCron } from './cron/generate-recommendations'
+import { startMorningBriefCron } from './cron/morning-briefs'
+import { startAlpacaStream } from './ws/alpaca-stream'
+import { startWsServer } from './ws/server'
 
 dotenv.config()
 
@@ -30,9 +39,22 @@ app.use('/recommendations', recommendationsRouter)
 app.use('/challenges', challengesRouter)
 app.use('/webhooks', webhooksRouter)
 app.use('/config', configRouter)
+app.use('/users', usersRouter)
+app.use('/agent-hires', agentHiresRouter)
 
 app.use(errorHandler)
 
-app.listen(PORT, () => {
+// HTTP + WebSocket server
+const server = http.createServer(app)
+startWsServer(server)
+startAlpacaStream(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'TSLA', 'META', 'AMZN', 'AMD'])
+
+// Cron jobs
+startMarketDataCron()
+startAgentCrons()
+startRecommendationCron()
+startMorningBriefCron()
+
+server.listen(PORT, () => {
   console.log(`Mockket API running on port ${PORT}`)
 })
