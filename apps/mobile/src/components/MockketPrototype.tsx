@@ -426,6 +426,99 @@ const RiskBadge: React.FC<{ risk: "low" | "medium" | "high" | "degen" }> = ({
   );
 };
 
+// ─── Skeleton / Empty / Error atoms ──────────────────────────────────────────
+
+const Skeleton: React.FC<{ width?: string | number; height?: number; style?: React.CSSProperties }> = ({
+  width = "100%",
+  height = 16,
+  style,
+}) => (
+  <div
+    className="skeleton"
+    style={{ width, height, borderRadius: 6, flexShrink: 0, ...style }}
+  />
+);
+
+const EmptyState: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  action?: { label: string; onClick: () => void };
+}> = ({ icon, title, body, action }) => (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "48px 24px",
+      gap: 12,
+      textAlign: "center",
+    }}
+  >
+    <div style={{ color: C.text.dim, marginBottom: 4 }}>{icon}</div>
+    <div style={{ fontSize: 16, fontWeight: 700, color: C.text.secondary }}>{title}</div>
+    <div style={{ fontSize: 13, color: C.text.dim, lineHeight: 1.5, maxWidth: 220 }}>{body}</div>
+    {action && (
+      <button
+        onClick={action.onClick}
+        style={{
+          marginTop: 8,
+          background: C.brand,
+          border: "none",
+          borderRadius: 8,
+          color: "#fff",
+          fontWeight: 700,
+          fontSize: 13,
+          padding: "10px 20px",
+          cursor: "pointer",
+          ...glowGreen,
+        }}
+      >
+        {action.label}
+      </button>
+    )}
+  </div>
+);
+
+const ErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "48px 24px",
+      gap: 12,
+      textAlign: "center",
+    }}
+  >
+    <AlertCircle size={32} color={C.negative} />
+    <div style={{ fontSize: 15, fontWeight: 700, color: C.text.secondary }}>
+      Failed to load
+    </div>
+    <div style={{ fontSize: 13, color: C.text.dim, lineHeight: 1.5 }}>
+      Check your connection and try again.
+    </div>
+    <button
+      onClick={onRetry}
+      style={{
+        marginTop: 8,
+        background: C.bg.elevated,
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        color: C.text.secondary,
+        fontWeight: 700,
+        fontSize: 13,
+        padding: "10px 20px",
+        cursor: "pointer",
+      }}
+    >
+      Retry
+    </button>
+  </div>
+);
+
 // Mini sparkline for market rows
 const MiniSpark: React.FC<{ values: number[]; positive: boolean }> = ({
   values,
@@ -664,10 +757,68 @@ const TabBar: React.FC<{
 
 // ─── Portfolio tab ────────────────────────────────────────────────────────────
 
-const PortfolioTab: React.FC<{ onOpenTrade: () => void }> = ({
+const PortfolioTab: React.FC<{ onOpenTrade: () => void; loading?: boolean; error?: boolean; onRetry?: () => void }> = ({
   onOpenTrade,
+  loading = false,
+  error = false,
+  onRetry,
 }) => {
   const [period, setPeriod] = useState("1M");
+
+  if (error) {
+    return <ErrorState onRetry={onRetry ?? (() => {})} />;
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Header skeleton */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Skeleton width={140} height={12} />
+            <Skeleton width={200} height={40} />
+            <Skeleton width={160} height={22} />
+          </div>
+          <Skeleton width={72} height={40} style={{ borderRadius: 10 }} />
+        </div>
+        {/* Chart skeleton */}
+        <div style={{ ...cardStyle, padding: "16px 16px 8px" }}>
+          <Skeleton width={120} height={28} style={{ marginBottom: 14, borderRadius: 8 }} />
+          <Skeleton width="100%" height={120} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            {[48, 48, 60, 48, 48].map((w, i) => <Skeleton key={i} width={w} height={10} />)}
+          </div>
+        </div>
+        {/* Stats skeleton */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[0, 1].map((i) => (
+            <div key={i} style={{ ...cardStyle, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <Skeleton width={60} height={10} />
+              <Skeleton width={100} height={22} />
+            </div>
+          ))}
+        </div>
+        {/* Holdings skeleton */}
+        <div style={{ ...cardStyle, overflow: "hidden" }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: i < 3 ? `1px solid ${C.borderSubtle}` : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Skeleton width={40} height={40} style={{ borderRadius: 10 }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <Skeleton width={50} height={14} />
+                  <Skeleton width={100} height={11} />
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+                <Skeleton width={60} height={14} />
+                <Skeleton width={40} height={12} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const holdings = [
     {
@@ -834,7 +985,14 @@ const PortfolioTab: React.FC<{ onOpenTrade: () => void }> = ({
           <Label>{holdings.length} positions</Label>
         </div>
         <div style={{ ...cardStyle, overflow: "hidden" }}>
-          {holdings.map((h, i) => {
+          {holdings.length === 0 ? (
+            <EmptyState
+              icon={<BarChart2 size={36} />}
+              title="No positions yet"
+              body="Make your first trade to start building your portfolio."
+              action={{ label: "Trade Now", onClick: onOpenTrade }}
+            />
+          ) : holdings.map((h, i) => {
             const pos = h.change >= 0;
             return (
               <div
@@ -918,8 +1076,11 @@ const PortfolioTab: React.FC<{ onOpenTrade: () => void }> = ({
 
 // ─── Markets tab ──────────────────────────────────────────────────────────────
 
-const MarketsTab: React.FC<{ onSelectTicker: (t: string) => void }> = ({
+const MarketsTab: React.FC<{ onSelectTicker: (t: string) => void; loading?: boolean; error?: boolean; onRetry?: () => void }> = ({
   onSelectTicker,
+  loading = false,
+  error = false,
+  onRetry,
 }) => {
   const [query, setQuery] = useState("");
   const filtered = MARKETS.filter(
@@ -927,6 +1088,36 @@ const MarketsTab: React.FC<{ onSelectTicker: (t: string) => void }> = ({
       m.ticker.toLowerCase().includes(query.toLowerCase()) ||
       m.name.toLowerCase().includes(query.toLowerCase())
   );
+
+  if (error) return <ErrorState onRetry={onRetry ?? (() => {})} />;
+
+  if (loading) {
+    return (
+      <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Skeleton width={100} height={28} style={{ borderRadius: 6 }} />
+          <Skeleton width={90} height={30} style={{ borderRadius: 8 }} />
+        </div>
+        <Skeleton width="100%" height={44} style={{ borderRadius: 10 }} />
+        <div style={{ ...cardStyle, overflow: "hidden" }}>
+          <div style={{ padding: "8px 16px", borderBottom: `1px solid ${C.border}` }}>
+            <Skeleton width="100%" height={12} />
+          </div>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "0 16px", alignItems: "center", padding: "13px 16px", borderBottom: i < 5 ? `1px solid ${C.borderSubtle}` : "none" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <Skeleton width={50} height={14} />
+                <Skeleton width={80} height={11} />
+              </div>
+              <Skeleton width={48} height={20} />
+              <Skeleton width={60} height={14} />
+              <Skeleton width={44} height={12} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1296,7 +1487,42 @@ const AgentCard: React.FC<{
 
 const AgentsTab: React.FC<{
   onOpenAgent: (id: string) => void;
-}> = ({ onOpenAgent }) => (
+  loading?: boolean;
+}> = ({ onOpenAgent, loading = false }) => {
+  if (loading) {
+    return (
+      <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Skeleton width={180} height={28} style={{ borderRadius: 6 }} />
+          <Skeleton width={56} height={26} style={{ borderRadius: 6 }} />
+        </div>
+        {[0, 1].map((i) => (
+          <div key={i} style={{ ...cardStyle, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Skeleton width={48} height={48} style={{ borderRadius: "50%" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <Skeleton width={140} height={15} />
+                  <Skeleton width={100} height={11} />
+                </div>
+              </div>
+              <Skeleton width={60} height={20} style={{ borderRadius: 4 }} />
+            </div>
+            <Skeleton width="100%" height={8} style={{ borderRadius: 99 }} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+              {[0, 1, 2].map((j) => <Skeleton key={j} width="100%" height={50} style={{ borderRadius: 8 }} />)}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Skeleton width="33%" height={38} style={{ borderRadius: 8 }} />
+              <Skeleton width="67%" height={38} style={{ borderRadius: 8 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
   <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <h1
@@ -1360,12 +1586,36 @@ const AgentsTab: React.FC<{
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // ─── Challenge tab ────────────────────────────────────────────────────────────
 
-const ChallengesTab: React.FC = () => {
+const ChallengesTab: React.FC<{ onNewChallenge?: () => void }> = ({ onNewChallenge }) => {
   const ch = CHALLENGES[0];
+
+  if (!ch) {
+    return (
+      <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: C.text.primary, letterSpacing: "-0.5px" }}>Challenge</h1>
+          <button
+            onClick={onNewChallenge}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: C.brand, border: "none", borderRadius: 8, color: "#fff", fontWeight: 700, fontSize: 12, padding: "8px 12px", cursor: "pointer", ...glowGreen }}
+          >
+            <Plus size={13} /> New
+          </button>
+        </div>
+        <EmptyState
+          icon={<Award size={36} />}
+          title="No active challenges"
+          body="Challenge Marcus, Priya, or a friend and see who makes the best trades."
+          action={{ label: "Start a Challenge", onClick: onNewChallenge ?? (() => {}) }}
+        />
+      </div>
+    );
+  }
+
   const myPct = ch.myReturn;
   const theirPct = ch.opponentReturn;
   const total = Math.abs(myPct) + Math.abs(theirPct);
@@ -1683,7 +1933,13 @@ const ActivityTab: React.FC = () => (
       Activity
     </h1>
     <div style={{ ...cardStyle, overflow: "hidden" }}>
-      {ACTIVITY.map((item, i) => {
+      {ACTIVITY.length === 0 ? (
+        <EmptyState
+          icon={<Activity size={36} />}
+          title="No trades yet"
+          body="Your trade history and agent activity will appear here."
+        />
+      ) : ACTIVITY.map((item, i) => {
         const isBuy = item.action === "buy";
         const dotColor = isBuy ? C.positive : C.negative;
         const isAgent = item.agent !== "You";
@@ -2139,8 +2395,14 @@ const TradeOverlay: React.FC<{
   const market = MARKETS.find((m) => m.ticker === ticker) || MARKETS[0];
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [qty, setQty] = useState(1);
-  const total = qty * market.price;
   const isBuy = side === "buy";
+
+  // Bid/ask spread: buy at ask, sell at bid (CLAUDE.md requirement)
+  const spreadPct = market.price > 5000 ? 0.001 : 0.0005; // 0.1% crypto, 0.05% stocks
+  const ask = market.price * (1 + spreadPct);
+  const bid = market.price * (1 - spreadPct);
+  const executionPrice = isBuy ? ask : bid;
+  const total = qty * executionPrice;
 
   return (
     <div
@@ -2229,22 +2491,36 @@ const TradeOverlay: React.FC<{
           </button>
         </div>
 
-        {/* Price hero */}
-        <div style={{ textAlign: "center", padding: "18px 20px 0" }}>
-          <div
-            style={{
-              fontSize: 36,
-              fontWeight: 800,
-              color: C.text.primary,
-              letterSpacing: "-1px",
-              fontFamily: "monospace",
-              ...tabularNums,
-            }}
-          >
-            ${fmt(market.price)}
+        {/* Price hero with bid/ask */}
+        <div style={{ padding: "18px 20px 0" }}>
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: 36,
+                fontWeight: 800,
+                color: C.text.primary,
+                letterSpacing: "-1px",
+                fontFamily: "monospace",
+                ...tabularNums,
+              }}
+            >
+              ${fmt(market.price)}
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <DeltaBadge value={market.change} />
+            </div>
           </div>
-          <div style={{ marginTop: 4 }}>
-            <DeltaBadge value={market.change} />
+          {/* Bid / Ask row */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 20, marginTop: 12 }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.1em", fontWeight: 700, color: C.negative, textTransform: "uppercase" as const, marginBottom: 2 }}>Bid</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: isBuy ? C.text.dim : C.negative, fontFamily: "monospace", ...tabularNums, transition: "color 0.2s" }}>${fmt(bid)}</div>
+            </div>
+            <div style={{ width: 1, background: C.border }} />
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.1em", fontWeight: 700, color: C.positive, textTransform: "uppercase" as const, marginBottom: 2 }}>Ask</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: isBuy ? C.positive : C.text.dim, fontFamily: "monospace", ...tabularNums, transition: "color 0.2s" }}>${fmt(ask)}</div>
+            </div>
           </div>
         </div>
 
@@ -2372,8 +2648,8 @@ const TradeOverlay: React.FC<{
           >
             {[
               {
-                label: "Price per share",
-                value: `$${fmt(market.price)}`,
+                label: isBuy ? "Ask (execution price)" : "Bid (execution price)",
+                value: `$${fmt(executionPrice)}`,
                 highlight: false,
               },
               {
@@ -2446,8 +2722,7 @@ const TradeOverlay: React.FC<{
               transition: "box-shadow 0.2s",
             }}
           >
-            {isBuy ? "Buy" : "Sell"} {qty} {market.ticker} · $
-            {fmt(total, 0)}
+            {isBuy ? "Buy" : "Sell"} {qty} {market.ticker} @ ${fmt(executionPrice)} · ${fmt(total, 0)}
           </button>
         </div>
       </div>
@@ -2550,6 +2825,20 @@ export const MockketPrototype: React.FC = () => {
   const [tab, setTab] = useState("portfolio");
   const [agentOverlay, setAgentOverlay] = useState<string | null>(null);
   const [tradeOverlay, setTradeOverlay] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  // Simulate data fetch: 1.5s load then reveal content
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleRetry = () => {
+    setHasError(false);
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1500);
+  };
 
   return (
     <>
@@ -2558,6 +2847,16 @@ export const MockketPrototype: React.FC = () => {
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(1.3); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        .skeleton {
+          background: linear-gradient(90deg, #1E293B 25%, #243044 50%, #1E293B 75%);
+          background-size: 800px 100%;
+          animation: shimmer 1.4s infinite linear;
+          border-radius: 6px;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: ${C.bg.secondary}; }
@@ -2676,15 +2975,23 @@ export const MockketPrototype: React.FC = () => {
             }}
           >
             {tab === "portfolio" && (
-              <PortfolioTab onOpenTrade={() => setTradeOverlay("NVDA")} />
+              <PortfolioTab
+                onOpenTrade={() => setTradeOverlay("NVDA")}
+                loading={isLoading}
+                error={hasError}
+                onRetry={handleRetry}
+              />
             )}
             {tab === "markets" && (
               <MarketsTab
                 onSelectTicker={(t) => setTradeOverlay(t)}
+                loading={isLoading}
+                error={hasError}
+                onRetry={handleRetry}
               />
             )}
             {tab === "agents" && (
-              <AgentsTab onOpenAgent={(id) => setAgentOverlay(id)} />
+              <AgentsTab onOpenAgent={(id) => setAgentOverlay(id)} loading={isLoading} />
             )}
             {tab === "challenges" && <ChallengesTab />}
             {tab === "activity" && <ActivityTab />}
