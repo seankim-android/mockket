@@ -6,6 +6,8 @@ export function startWsServer(httpServer: HttpServer) {
   const wss = new WebSocketServer({ server: httpServer })
   const subscriber = redis.duplicate()
 
+  subscriber.on('error', (err) => console.error('[ws] redis subscriber error:', err))
+
   // Subscribe to Redis price channel
   subscriber.subscribe('prices')
   subscriber.on('message', (_channel, message) => {
@@ -23,4 +25,13 @@ export function startWsServer(httpServer: HttpServer) {
   })
 
   console.log('[ws] server started')
+
+  return {
+    wss,
+    close: async () => {
+      await subscriber.unsubscribe('prices')
+      subscriber.disconnect()
+      wss.close()
+    },
+  }
 }
