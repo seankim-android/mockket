@@ -4,6 +4,8 @@ import cors from 'cors'
 import helmet from 'helmet'
 import dotenv from 'dotenv'
 import { errorHandler } from './middleware/error'
+import { portfolioRouter } from './routes/portfolio'
+import { tradesRouter } from './routes/trades'
 
 dotenv.config()
 
@@ -17,7 +19,9 @@ app.use(express.json())
 // Health check
 app.get('/health', (_req, res) => res.json({ ok: true }))
 
-// Routes (added in later tasks)
+// Routes
+app.use('/portfolio', portfolioRouter)
+app.use('/trades', tradesRouter)
 
 app.use(errorHandler)
 
