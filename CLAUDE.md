@@ -44,58 +44,20 @@ Mockket is a mobile paper trading app where users invest fake money in real mark
 
 ---
 
-## Key Product Rules
+## Critical Coding Constraints
 
-- Trade history is permanent. Never delete it, even on reset.
-- Agent logs must include: timestamp, ticker, action (buy/sell), quantity, price at execution, in-character rationale string.
-- Challenge history is permanent. Resets do not affect challenge records.
-- Free users: advisory mode only, one active challenge, standard analytics, agent holdings with 24h delay.
-- Premium users: autopilot mode, multiple challenges, advanced analytics, real-time agent holdings visibility.
-- No ads, ever.
+Rules where getting it wrong produces incorrect behavior. See PRD.md for full context on all of these.
 
-**Resets:**
-- Portfolio resets are blocked while any challenge is active.
-- On reset, all agent hires are paused. User must manually re-confirm each hire to restart.
+- **Trade and challenge history are permanent.** Never delete records on reset — only the cash balance resets.
+- **Agent log fields are required:** timestamp, ticker, action, quantity, price at execution, in-character rationale string.
+- **Advisory rationale is hidden until post-trade.** Never return it on the recommendation approval screen — only after the user acts.
+- **Buy at ask, sell at bid.** Never execute at mid price.
+- **Resets:** blocked while any challenge is active. All agent hires are auto-paused on reset; user must manually re-confirm each.
+- **Agent reactions:** max 1 per agent per day. Triggers: (1) user trades >3% of portfolio value, or (2) user trades a ticker the agent holds or recently traded.
+- **Agent allocation:** min $1,000, max 50% of available cash.
+- **PDT warning is educational only.** Never block a trade — surface the warning at 2+ day trades in a 5-day window.
 
-**Challenges:**
-- Challenge portfolios are separate from the main portfolio. Cash is drawn from main portfolio cash at challenge start.
-- Challenge winner is determined by % return, not absolute dollar return.
-- Users can exit a challenge early; it is recorded as a forfeit/loss in challenge history.
-- Advisory mode recommendations from hired agents can apply to the challenge portfolio.
-- Challenges support 1-week and 1-month durations in MVP (3-month in V2).
-- Users can challenge an agent or a friend (friend challenges via invite link or username search, must accept within 24h).
-
-**Agent behavior:**
-- Advisory recommendations: max 1 per agent per day per user.
-- Advisory recommendation reasoning is revealed post-trade only (not shown on approval screen).
-- Agent reactions trigger on: (1) user trades >3% of portfolio value, or (2) user trades a ticker the agent currently holds or recently traded — regardless of size. Max 1 reaction per agent per day.
-- Stock-only agents send one in-character Saturday commentary message on weekends (no trades).
-
-**Agent allocation:**
-- Minimum allocation: $1,000. Maximum allocation: 50% of available cash.
-
-**Leaderboard:**
-- Global leaderboard is opt-in to *appear on*. Viewing the leaderboard requires no opt-in.
-- Ranked by 30-day rolling % return on main portfolio.
-- Top 5 preview shown on Home screen. Full top 50 on Challenges tab.
-
-**Trading realism rules:**
-- Buy orders execute at ask price. Sell orders execute at bid price. Never at mid price.
-- Market orders show execution price disclaimer on confirmation screen: fills at next available ask, may differ from quoted price.
-- Stocks only trade Mon–Fri 9:30am–4:00pm ET. After-hours orders are queued for next market open and can be cancelled before then.
-- Crypto trades 24/7, no restrictions.
-- Market status (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS) shown on Markets and Trade screens at all times.
-- PDT warning at 2+ day trades in a 5-day window. Educational only, never blocks a trade.
-- Dividends credited to paper cash on ex-dividend date. Appears in activity feed.
-- Stock splits adjust share quantity and cost basis automatically.
-- Earnings dates shown as badges on stock cards within 7 days of reporting.
-
-**FTUE rules:**
-- Mission 1 cards (3 sequential actions) shown on Home for new users until all 3 are completed. Not skippable, not blocking.
-- Agent intro message fires within 2 minutes of account creation. Marcus only. Fires once per account, never again.
-- First trade confirmation screen shows one-time bid/ask and execution price annotations. Shown once, never again.
-- Post-first-trade full-screen card fires after first trade only.
-- Day 2 re-engagement message fires if user returns next day without a challenge started.
+For full product rules, screen specs, feature details, and edge cases, see PRD.md.
 
 ---
 

@@ -150,6 +150,8 @@ End-of-challenge recap screen breaks down who won, what trades decided it, and t
 
 Each agent exposes a complete trade log showing every action taken: timestamp, ticker, order type, price at execution, position size, and in-character rationale. Users can pull up a side-by-side view comparing their trades to the agent's trades over any challenge period. Each trade is annotated with outcome data — how much was made or lost, and how it compared to what the other side did at the same moment. This is the core learning feature.
 
+Each hired agent's profile also shows the user's all-time return vs that agent's all-time return — a running answer to "am I actually beating this thing?" Advisory mode users on premium see a recommendation outcome split: of the recommendations they accepted vs ignored, which set performed better and by how much. This is intentionally surfaced only post-hoc, never before the user acts.
+
 ### Agent Reactions
 
 Hired agents react in two situations:
@@ -173,9 +175,9 @@ Push notifications for: advisory mode recommendations, significant portfolio mov
 
 ## Monetization
 
-**Free tier:** Access to all agents in advisory mode, one active challenge at a time, standard portfolio analytics, full agent marketplace and logs, agent holdings visible with a 24-hour delay.
+**Free tier:** Access to all agents in advisory mode, one active challenge at a time, standard portfolio analytics (win rate, average holding period, best/worst single trade, cash drag, challenge W/L record per agent, percentile rank, all-time return vs each agent), full agent marketplace and logs, agent holdings visible with a 24-hour delay.
 
-**Premium tier:** Autopilot mode for agents, multiple simultaneous challenges, advanced analytics (Sharpe ratio, drawdown charts, sector exposure breakdown), early access to new agents, real-time visibility into agent holdings.
+**Premium tier:** Autopilot mode for agents, multiple simultaneous challenges, advanced analytics (Sharpe ratio, max drawdown charts, sector exposure breakdown, beta vs S&P 500, sector concentration score, advisory recommendation acceptance rate with outcome split), early access to new agents, real-time visibility into agent holdings.
 
 **IAP:** Portfolio reset at $0.99 per reset.
 
@@ -195,9 +197,9 @@ No ads. The product positioning is a serious-but-fun finance app and ads undermi
 
 **Agent Profile** — Full track record, personality blurb, complete trade log with rationale, current holdings (premium), slot availability.
 
-**Portfolio** — Total P&L, segment breakdown (self vs each agent), holdings list, performance chart over time, reset option.
+**Portfolio** — Total P&L, segment breakdown (self vs each agent), holdings list, performance chart over time, standard analytics (win rate, average holding period, best/worst single trade, cash drag), reset option.
 
-**Challenges** — Active challenges with live standings, challenge history, start new challenge flow (vs agent or vs friend), full leaderboard (top 50, opt-in to appear).
+**Challenges** — Active challenges with live standings, challenge history, W/L record per agent, start new challenge flow (vs agent or vs friend), full leaderboard (top 50, opt-in to appear) with user's current percentile rank shown.
 
 **Trade Comparison** — Side-by-side view of user trades vs agent trades for any challenge period, with outcome annotations.
 
@@ -377,7 +379,7 @@ ChangelogEntry { type: "new"|"improved"|"fixed", text }
 **What's included:**
 - Autopilot mode for hired agents
 - Multiple simultaneous challenges (up to 5)
-- Advanced analytics: Sharpe ratio, max drawdown, sector exposure breakdown
+- Advanced analytics: Sharpe ratio, max drawdown, sector exposure breakdown, beta vs S&P 500, sector concentration score, advisory recommendation acceptance rate with outcome split (how trades performed when you followed vs ignored each agent)
 - Real-time agent holdings visibility (free tier has 24h delay)
 - Early access to new agents before general availability
 
