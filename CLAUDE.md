@@ -20,7 +20,7 @@ Mockket is a mobile paper trading app where users invest fake money in real mark
 | Backend | Node.js | WebSocket server for live prices |
 | Database | Postgres | Trade history, portfolios, users |
 | Cache | Redis | Real-time price caching, sessions |
-| Auth | Supabase or Firebase Auth | Email + Apple + Google sign-in |
+| Auth | Supabase Auth | Email + Apple + Google sign-in. Session stored in device keychain via expo-secure-store. |
 | Notifications | Firebase Cloud Messaging | Push notifications |
 | Agent scheduling | Node cron jobs | Agent rebalancing runs on schedule |
 
