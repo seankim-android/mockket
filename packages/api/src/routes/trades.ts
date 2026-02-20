@@ -34,7 +34,14 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
     [userId, ticker]
   )
 
-  res.json({ ok: true, price, executedAt: new Date().toISOString() })
+  const { rows: dtRows } = await db.query(
+    `SELECT COUNT(*) FROM day_trades
+     WHERE user_id = $1 AND traded_at > NOW() - INTERVAL '5 days'`,
+    [userId]
+  )
+  const dayTradeCount = Number(dtRows[0].count)
+
+  res.json({ ok: true, price, executedAt: new Date().toISOString(), dayTradeCount })
 
   // Agent reaction triggers — run after responding (non-blocking)
   void (async () => {
