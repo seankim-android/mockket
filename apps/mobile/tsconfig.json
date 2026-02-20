@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "esnext",
     "paths": {
       "@/*": ["./src/*"],
       "@mockket/shared": ["../../packages/shared/src"]

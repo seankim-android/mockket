@@ -1,3 +1,5 @@
+import { useAuthStore } from '../../features/auth/store'
+
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000'
 
 class ApiError extends Error {
@@ -8,10 +10,12 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = useAuthStore.getState().session?.access_token
+
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      // TODO: attach auth token from Zustand auth store
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     ...options,
   })

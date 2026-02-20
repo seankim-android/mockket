@@ -9,13 +9,27 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mockket.app"
+      "bundleIdentifier": "com.mockket.app",
+      "associatedDomains": ["applinks:mockket.app"]
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0F172A"
       },
-      "package": "com.mockket.app"
+      "package": "com.mockket.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "mockket.app"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "plugins": [
       "expo-router"

@@ -24,3 +24,11 @@ export interface AgentHire {
   hiredAt: string
   pausedAt: string | null
 }
+
+export interface ProposedTrade {
+  ticker: string
+  action: 'buy' | 'sell'
+  quantity: number
+  estimatedValue: number   // quantity * current price
+  portfolioValue: number   // user's total portfolio value
+}
