@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db/client'
+import { getPortfolioResetTransactionIds } from '../lib/revenuecat'
 
 export const usersRouter = Router()
 
@@ -156,19 +157,34 @@ usersRouter.post('/fcm-token', requireAuth, async (req, res) => {
 usersRouter.post('/portfolio/reset', requireAuth, async (_req, res) => {
   const userId = res.locals.userId
 
+  // Verify purchase server-side via RevenueCat REST API before opening a transaction.
+  // We fetch all transaction IDs for this user, then find one that hasn't been consumed yet.
+  const allTxIds = await getPortfolioResetTransactionIds(userId)
+  if (allTxIds.length === 0) {
+    return res.status(402).json({ error: 'Purchase required to reset portfolio' })
+  }
+
+  // Check which transaction IDs have already been consumed
+  const { rows: usedRows } = await db.query(
+    `SELECT rc_transaction_id FROM portfolio_reset_receipts WHERE user_id = $1`,
+    [userId]
+  )
+  const usedIds = new Set(usedRows.map((r: { rc_transaction_id: string }) => r.rc_transaction_id))
+  const unusedTxId = allTxIds.find((id) => !usedIds.has(id))
+
+  if (!unusedTxId) {
+    return res.status(402).json({ error: 'Purchase required to reset portfolio' })
+  }
+
   const client = await db.connect()
   try {
     await client.query('BEGIN')
 
-    // IAP gate inside transaction to prevent TOCTOU race with RevenueCat webhook
-    const { rows: userRows } = await client.query(
-      `SELECT is_premium FROM users WHERE id = $1`,
-      [userId]
+    // Consume the receipt atomically inside the transaction (UNIQUE constraint prevents double-spend)
+    await client.query(
+      `INSERT INTO portfolio_reset_receipts (user_id, rc_transaction_id) VALUES ($1, $2)`,
+      [userId, unusedTxId]
     )
-    if (!userRows[0]?.is_premium) {
-      await client.query('ROLLBACK')
-      return res.status(402).json({ error: 'Purchase required to reset portfolio' })
-    }
 
     // Block if any active challenge — checked inside transaction to prevent TOCTOU
     const { rows: activeChallenges } = await client.query(

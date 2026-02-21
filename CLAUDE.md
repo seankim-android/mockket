@@ -179,6 +179,7 @@ REDIS_URL
 FIREBASE_PROJECT_ID
 FIREBASE_SERVICE_ACCOUNT
 APPLE_CLIENT_ID            # for Sign in with Apple
+REVENUECAT_SECRET_KEY      # server-side secret for verifying IAP receipts via RevenueCat REST API
 ```
 
 ---

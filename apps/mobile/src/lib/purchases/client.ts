@@ -11,6 +11,11 @@ export function initPurchases() {
   Purchases.configure({ apiKey: Platform.OS === 'ios' ? API_KEYS.ios : API_KEYS.android })
 }
 
+// Call after the user signs in so RevenueCat can look up purchases by Supabase user ID
+export async function loginPurchases(userId: string) {
+  await Purchases.logIn(userId)
+}
+
 export async function purchasePremium(packageId: 'monthly' | 'annual') {
   const offerings = await Purchases.getOfferings()
   const pkg = offerings.current?.availablePackages.find(p => p.identifier === packageId)
