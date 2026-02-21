@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Text } from '@/components/primitives'
 import { api } from '@/lib/api/client'
@@ -28,6 +28,14 @@ interface UserProfile {
   reset_count: number
 }
 
+interface NotificationPrefs {
+  advisory_recommendations: boolean
+  agent_reactions: boolean
+  challenge_milestones: boolean
+  portfolio_alerts: boolean
+  recommendation_expiry: boolean
+}
+
 function calcPortfolioValue(portfolio: Portfolio): number {
   return portfolio.cash + portfolio.holdings.reduce((sum, h) => sum + h.quantity * h.avg_cost, 0)
 }
@@ -35,6 +43,8 @@ function calcPortfolioValue(portfolio: Portfolio): number {
 export default function PortfolioScreen() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<'portfolio' | 'settings'>('portfolio')
+  const [deleteInput, setDeleteInput] = useState('')
+  const [showDelete, setShowDelete] = useState(false)
 
   const { data: portfolio } = useQuery<Portfolio>({
     queryKey: ['portfolio'],
@@ -54,6 +64,17 @@ export default function PortfolioScreen() {
   const { mutate: updateUser } = useMutation({
     mutationFn: (patch: Partial<UserProfile>) => api.patch('/users/me', patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-me'] }),
+  })
+
+  const { data: notifPrefs } = useQuery<NotificationPrefs>({
+    queryKey: ['notif-prefs'],
+    queryFn: () => api.get<NotificationPrefs>('/users/me/notification-preferences'),
+  })
+
+  const { mutate: updateNotifPrefs } = useMutation({
+    mutationFn: (patch: Partial<NotificationPrefs>) =>
+      api.patch('/users/me/notification-preferences', patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notif-prefs'] }),
   })
 
   const totalValue = portfolio ? calcPortfolioValue(portfolio) : 0
@@ -182,6 +203,28 @@ export default function PortfolioScreen() {
           </View>
 
           <View style={styles.section}>
+            <Text variant="label" color="secondary" style={styles.sectionTitle}>NOTIFICATIONS</Text>
+            <View style={styles.card}>
+              {([
+                ['advisory_recommendations', 'Advisory recommendations'],
+                ['agent_reactions', 'Agent reactions'],
+                ['challenge_milestones', 'Challenge milestones'],
+                ['portfolio_alerts', 'Portfolio alerts (5%+ moves)'],
+                ['recommendation_expiry', 'Recommendation expiry'],
+              ] as const).map(([key, label]) => (
+                <View key={key} style={styles.switchRow}>
+                  <Text variant="body">{label}</Text>
+                  <Switch
+                    value={notifPrefs?.[key] ?? false}
+                    onValueChange={(val) => updateNotifPrefs({ [key]: val } as any)}
+                    trackColor={{ true: tokens.colors.brand.default, false: tokens.colors.bg.tertiary }}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
             <Text variant="label" color="secondary" style={styles.sectionTitle}>INFO</Text>
             <View style={styles.card}>
               <TouchableOpacity style={styles.menuRow}>
@@ -189,18 +232,32 @@ export default function PortfolioScreen() {
                 <Text variant="caption" color="secondary">›</Text>
               </TouchableOpacity>
               <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() =>
-                  Alert.alert('Delete Account', 'This cannot be undone.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => api.delete('/users/me') },
-                  ])
-                }
-              >
-                <Text variant="body" style={{ color: tokens.colors.negative }}>Delete Account</Text>
+              <TouchableOpacity style={styles.menuRow} onPress={() => setShowDelete((v) => !v)}>
+                <Text variant="body" style={{ color: tokens.colors.error }}>Delete Account</Text>
                 <Text variant="caption" color="secondary">›</Text>
               </TouchableOpacity>
+              {showDelete && (
+                <View style={{ marginTop: tokens.spacing[3] }}>
+                  <Text variant="caption" color="secondary" style={{ marginBottom: tokens.spacing[2] }}>
+                    Type DELETE to confirm. This cannot be undone.
+                  </Text>
+                  <TextInput
+                    style={styles.deleteInput}
+                    value={deleteInput}
+                    onChangeText={setDeleteInput}
+                    placeholder="DELETE"
+                    placeholderTextColor={tokens.colors.text.muted}
+                    autoCapitalize="characters"
+                  />
+                  <TouchableOpacity
+                    style={[styles.deleteBtn, deleteInput !== 'DELETE' && { opacity: 0.4 }]}
+                    disabled={deleteInput !== 'DELETE'}
+                    onPress={() => api.delete('/users/me')}
+                  >
+                    <Text variant="label" style={{ color: '#fff' }}>Delete my account</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </>
@@ -281,5 +338,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: tokens.spacing[4],
     marginBottom: tokens.spacing[8],
+  },
+  deleteInput: {
+    backgroundColor: tokens.colors.bg.primary,
+    borderRadius: tokens.radii.md,
+    padding: tokens.spacing[3],
+    color: tokens.colors.text.primary,
+    marginBottom: tokens.spacing[2],
+    borderWidth: 1,
+    borderColor: tokens.colors.error,
+  },
+  deleteBtn: {
+    backgroundColor: tokens.colors.error,
+    borderRadius: tokens.radii.md,
+    padding: tokens.spacing[3],
+    alignItems: 'center',
   },
 })
