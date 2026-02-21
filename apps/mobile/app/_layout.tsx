@@ -19,18 +19,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, isLoading } = useAuthStore()
   const segments = useSegments()
   const router = useRouter()
+  const inAuthGroup = segments[0] === '(auth)'
 
   useEffect(() => {
     if (isLoading) return
-
-    const inAuthGroup = segments[0] === '(auth)'
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/welcome')
     } else if (session && inAuthGroup) {
       router.replace('/(tabs)/')
     }
-  }, [session, isLoading, segments])
+  }, [session, isLoading, inAuthGroup, router])
 
   if (isLoading) return null
 
