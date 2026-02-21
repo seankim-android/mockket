@@ -168,13 +168,35 @@ challengesRouter.get('/', requireAuth, async (req, res) => {
   res.json(rows)
 })
 
-// GET /challenges/:id — single challenge detail
+// GET /challenges/:id — single challenge detail with computed P&L
 challengesRouter.get('/:id', requireAuth, async (req, res) => {
   const userId = res.locals.userId
-  const { rows } = await db.query(
-    `SELECT * FROM challenges WHERE id = $1 AND (user_id = $2 OR opponent_user_id = $2)`,
-    [req.params.id, userId]
-  )
-  if (!rows[0]) return res.status(404).json({ error: 'Not found' })
-  res.json(rows[0])
+  try {
+    const { rows } = await db.query(
+      `SELECT c.*,
+         c.challenge_cash + COALESCE(
+           (SELECT SUM(h.quantity * COALESCE(cp.price, h.avg_cost))
+            FROM holdings h
+            LEFT JOIN current_prices cp ON cp.ticker = h.ticker
+            WHERE h.user_id = $2 AND h.challenge_id = c.id),
+           0
+         ) AS final_value,
+         CASE WHEN c.starting_balance > 0 THEN
+           ((c.challenge_cash + COALESCE(
+             (SELECT SUM(h.quantity * COALESCE(cp.price, h.avg_cost))
+              FROM holdings h
+              LEFT JOIN current_prices cp ON cp.ticker = h.ticker
+              WHERE h.user_id = $2 AND h.challenge_id = c.id),
+             0
+           ) - c.starting_balance) / c.starting_balance * 100)
+         ELSE 0 END AS return_pct
+       FROM challenges c
+       WHERE c.id = $1 AND (c.user_id = $2 OR c.opponent_user_id = $2)`,
+      [req.params.id, userId]
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' })
+    res.json(rows[0])
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch challenge' })
+  }
 })
