@@ -5,7 +5,7 @@ export async function processDividends() {
   try {
     // Find dividend events with ex_date = today (ET)
     const { rows: events } = await db.query(
-      `SELECT ticker, amount_per_share FROM dividend_events
+      `SELECT ticker, amount_per_share, ex_date FROM dividend_events
        WHERE ex_date = (NOW() AT TIME ZONE 'America/New_York')::date
          AND credited_at IS NULL`
     )
@@ -13,9 +13,12 @@ export async function processDividends() {
     if (events.length === 0) return
 
     for (const event of events) {
+      const client = await db.connect()
       try {
+        await client.query('BEGIN')
+
         // Find all holders of this ticker (main portfolio only)
-        const { rows: holders } = await db.query(
+        const { rows: holders } = await client.query(
           `SELECT user_id, quantity FROM holdings
            WHERE ticker = $1
              AND agent_hire_id IS NULL
@@ -28,23 +31,27 @@ export async function processDividends() {
           const credit = Number(holder.quantity) * Number(event.amount_per_share)
           if (credit <= 0) continue
 
-          await db.query(
+          await client.query(
             `UPDATE users SET portfolio_cash = portfolio_cash + $1, updated_at = NOW()
              WHERE id = $2`,
             [credit, holder.user_id]
           )
         }
 
-        // Mark event as credited
-        await db.query(
+        // Mark event as credited using the event's own ex_date (not re-evaluated NOW())
+        await client.query(
           `UPDATE dividend_events SET credited_at = NOW()
-           WHERE ticker = $1 AND ex_date = (NOW() AT TIME ZONE 'America/New_York')::date`,
-          [event.ticker]
+           WHERE ticker = $1 AND ex_date = $2`,
+          [event.ticker, event.ex_date]
         )
 
+        await client.query('COMMIT')
         console.log(`[dividends] credited ${event.ticker} $${event.amount_per_share}/share to ${holders.length} holders`)
       } catch (err: any) {
+        await client.query('ROLLBACK')
         console.error(`[dividends] failed for ${event.ticker}:`, err.message)
+      } finally {
+        client.release()
       }
     }
   } catch (err: any) {
