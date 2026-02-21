@@ -2072,90 +2072,167 @@ const ActivityTab: React.FC = () => (
 
 // ─── Dev panel ────────────────────────────────────────────────────────────────
 
-const DEV_API = "http://localhost:3000";
+const LS_API_URL = "dev:apiUrl";
+const LS_SECRET  = "dev:secret";
 
 const DevPanel: React.FC = () => {
-  const [mode, setMode] = useState<"iex" | "test">("iex");
-  const [busy, setBusy] = useState(false);
+  const [mode, setMode]       = useState<"iex" | "test">("iex");
+  const [busy, setBusy]       = useState(false);
+  const [apiUrl, setApiUrl]   = useState(() => localStorage.getItem(LS_API_URL) ?? "");
+  const [secret, setSecret]   = useState(() => localStorage.getItem(LS_SECRET) ?? "");
+  const [editing, setEditing] = useState(!localStorage.getItem(LS_API_URL));
+  const [err, setErr]         = useState("");
+
+  const headers = (extra?: Record<string, string>) => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${secret}`,
+    ...extra,
+  });
 
   useEffect(() => {
-    fetch(`${DEV_API}/dev/sim`)
+    if (!apiUrl || !secret) return;
+    fetch(`${apiUrl}/dev/sim`, { headers: headers() })
       .then((r) => r.json())
       .then((d) => setMode(d.mode))
-      .catch(() => {/* backend not running — keep default */});
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const saveConfig = () => {
+    localStorage.setItem(LS_API_URL, apiUrl.replace(/\/$/, ""));
+    localStorage.setItem(LS_SECRET, secret);
+    setEditing(false);
+    setErr("");
+    fetch(`${apiUrl.replace(/\/$/, "")}/dev/sim`, { headers: headers() })
+      .then((r) => r.json())
+      .then((d) => setMode(d.mode))
+      .catch(() => setErr("Could not reach backend"));
+  };
+
   const toggle = async () => {
+    if (!apiUrl || !secret) { setEditing(true); return; }
     setBusy(true);
+    setErr("");
     const next = mode === "test" ? "iex" : "test";
     try {
-      await fetch(`${DEV_API}/dev/sim`, {
+      const r = await fetch(`${apiUrl}/dev/sim`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers(),
         body: JSON.stringify({ mode: next }),
       });
-      setMode(next);
+      if (r.ok) setMode(next);
+      else setErr(`Error ${r.status}`);
+    } catch {
+      setErr("Request failed");
     } finally {
       setBusy(false);
     }
   };
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "#0f172a",
+    border: `1px solid ${C.border}`,
+    borderRadius: 8,
+    padding: "8px 10px",
+    color: C.text.primary,
+    fontSize: 12,
+    outline: "none",
+  };
+
   return (
     <div style={{ padding: "0 16px 24px" }}>
-      <div style={{ ...cardStyle, padding: "14px 16px" }}>
-        <p
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            color: C.text.dim,
-            textTransform: "uppercase",
-            marginBottom: 12,
-          }}
-        >
-          Dev Tools
-        </p>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: C.text.primary }}>
-              Alpaca Test Stream
-            </p>
-            <p style={{ fontSize: 11, color: C.text.dim, marginTop: 3 }}>
-              {mode === "test"
-                ? "ON · AAPL-only feed, works on weekends"
-                : "OFF · IEX feed, market hours only"}
-            </p>
-          </div>
-          {/* Toggle pill */}
+      <div style={{ ...cardStyle, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.text.dim, textTransform: "uppercase" }}>
+            Dev Tools
+          </p>
           <button
-            onClick={toggle}
-            disabled={busy}
-            style={{
-              width: 44,
-              height: 26,
-              borderRadius: 13,
-              background: mode === "test" ? C.brand : "#334155",
-              border: "none",
-              cursor: busy ? "wait" : "pointer",
-              position: "relative",
-              flexShrink: 0,
-              transition: "background 0.2s ease",
-            }}
+            onClick={() => setEditing((v) => !v)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: C.text.dim, fontSize: 11 }}
           >
-            <div
-              style={{
-                position: "absolute",
-                top: 3,
-                left: mode === "test" ? 21 : 3,
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                background: "#fff",
-                transition: "left 0.2s ease",
-              }}
-            />
+            {editing ? "done" : "config"}
           </button>
         </div>
+
+        {/* Config fields */}
+        {editing && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <input
+              style={inputStyle}
+              placeholder="API URL (e.g. https://your-app.railway.app)"
+              value={apiUrl}
+              onChange={(e) => setApiUrl(e.target.value)}
+            />
+            <input
+              style={inputStyle}
+              placeholder="DEV_SECRET"
+              type="password"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+            />
+            <button
+              onClick={saveConfig}
+              style={{
+                background: C.brand,
+                border: "none",
+                borderRadius: 8,
+                padding: "8px 0",
+                color: "#000",
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Save & Connect
+            </button>
+          </div>
+        )}
+
+        {/* Toggle row */}
+        {!editing && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: C.text.primary }}>
+                Alpaca Test Stream
+              </p>
+              <p style={{ fontSize: 11, color: err ? C.negative : C.text.dim, marginTop: 3 }}>
+                {err || (mode === "test"
+                  ? "ON · AAPL-only feed, works on weekends"
+                  : "OFF · IEX feed, market hours only")}
+              </p>
+            </div>
+            <button
+              onClick={toggle}
+              disabled={busy}
+              style={{
+                width: 44,
+                height: 26,
+                borderRadius: 13,
+                background: mode === "test" ? C.brand : "#334155",
+                border: "none",
+                cursor: busy ? "wait" : "pointer",
+                position: "relative",
+                flexShrink: 0,
+                transition: "background 0.2s ease",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 3,
+                  left: mode === "test" ? 21 : 3,
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  background: "#fff",
+                  transition: "left 0.2s ease",
+                }}
+              />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

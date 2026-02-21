@@ -75,7 +75,7 @@ app.use('/agent-hires', agentHiresRouter)
 app.use('/activity', activityRouter)
 app.use('/markets', marketsRouter)
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.ENABLE_DEV_ROUTES === 'true') {
   app.use('/dev', devRouter)
   console.log('[dev] /dev routes enabled')
 }
