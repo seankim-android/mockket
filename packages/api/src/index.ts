@@ -78,7 +78,7 @@ app.use(errorHandler)
 
 // HTTP + WebSocket server
 const server = http.createServer(app)
-startWsServer(server)
+const wsServer = startWsServer(server)
 startAlpacaStream(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'TSLA', 'META', 'AMZN', 'AMD'])
 
 // Cron jobs
@@ -96,9 +96,14 @@ server.listen(PORT, () => {
 })
 
 function shutdown() {
-  console.log('[server] shutting down, closing Alpaca stream...')
+  console.log('[server] shutting down...')
+  // Stop Alpaca stream first so Railway's new instance can claim the connection.
   stopAlpacaStream()
+  // Close the WebSocket server (drops all client connections immediately).
+  wsServer.close()
+  // Give HTTP connections up to 5s to drain, then force-exit.
   server.close(() => process.exit(0))
+  setTimeout(() => process.exit(0), 5_000).unref()
 }
 
 process.on('SIGTERM', shutdown)
