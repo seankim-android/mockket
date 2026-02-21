@@ -2070,6 +2070,101 @@ const ActivityTab: React.FC = () => (
   </div>
 );
 
+// ─── Dev panel (localhost only) ───────────────────────────────────────────────
+
+const IS_DEV = typeof window !== "undefined" && window.location.hostname === "localhost";
+const DEV_API = "http://localhost:3000";
+
+const DevPanel: React.FC = () => {
+  const [mode, setMode] = useState<"iex" | "test" | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!IS_DEV) return;
+    fetch(`${DEV_API}/dev/sim`)
+      .then((r) => r.json())
+      .then((d) => setMode(d.mode))
+      .catch(() => setMode("iex"));
+  }, []);
+
+  if (!IS_DEV || mode === null) return null;
+
+  const toggle = async () => {
+    setBusy(true);
+    const next = mode === "test" ? "iex" : "test";
+    try {
+      await fetch(`${DEV_API}/dev/sim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: next }),
+      });
+      setMode(next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: "0 16px 24px" }}>
+      <div style={{ ...cardStyle, padding: "14px 16px" }}>
+        <p
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            color: C.text.dim,
+            textTransform: "uppercase",
+            marginBottom: 12,
+          }}
+        >
+          Dev Tools
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.text.primary }}>
+              Alpaca Test Stream
+            </p>
+            <p style={{ fontSize: 11, color: C.text.dim, marginTop: 3 }}>
+              {mode === "test"
+                ? "ON · AAPL-only feed, works on weekends"
+                : "OFF · IEX feed, market hours only"}
+            </p>
+          </div>
+          {/* Toggle pill */}
+          <button
+            onClick={toggle}
+            disabled={busy}
+            style={{
+              width: 44,
+              height: 26,
+              borderRadius: 13,
+              background: mode === "test" ? C.brand : "#334155",
+              border: "none",
+              cursor: busy ? "wait" : "pointer",
+              position: "relative",
+              flexShrink: 0,
+              transition: "background 0.2s ease",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 3,
+                left: mode === "test" ? 21 : 3,
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: "#fff",
+                transition: "left 0.2s ease",
+              }}
+            />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Agent Profile overlay ────────────────────────────────────────────────────
 
 const AgentProfileOverlay: React.FC<{
@@ -2995,6 +3090,7 @@ export const MockketPrototype: React.FC = () => {
             )}
             {tab === "challenges" && <ChallengesTab />}
             {tab === "activity" && <ActivityTab />}
+            {tab === "activity" && <DevPanel />}
           </div>
 
           {/* Tab bar */}
