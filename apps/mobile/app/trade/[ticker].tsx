@@ -8,7 +8,7 @@ import { tokens } from '@/design/tokens'
 export default function TradeScreen() {
   const { ticker } = useLocalSearchParams<{ ticker: string }>()
   const router = useRouter()
-  const prices = useLivePrices()
+  const prices = useLivePrices(ticker ? [ticker] : [])
   const [action, setAction] = useState<'buy' | 'sell'>('buy')
   const [quantity, setQuantity] = useState('')
 

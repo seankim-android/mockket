@@ -6,6 +6,7 @@ import * as WebBrowser from 'expo-web-browser'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useAuthStore } from '@/features/auth/store'
 import { supabase, processedOAuthCodes } from '@/lib/supabase'
+import { connectPriceFeed, disconnectPriceFeed } from '@/lib/ws/client'
 
 // Required for WebBrowser.openAuthSessionAsync to close the browser after OAuth redirect
 WebBrowser.maybeCompleteAuthSession()
@@ -32,6 +33,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const inAuthGroup = segments[0] === '(auth)' || segments[0] === 'auth'
   const [forceUpdate, setForceUpdate] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (session?.access_token) {
+      connectPriceFeed(session.access_token)
+    } else {
+      disconnectPriceFeed()
+    }
+  }, [session?.access_token])
 
   useEffect(() => {
     if (isLoading || forceUpdate === null) return

@@ -53,7 +53,7 @@ const STATUS_LABELS: Record<MarketStatus, string> = {
 export default function MarketsScreen() {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const prices = useLivePrices()
+  const prices = useLivePrices(TICKERS.map((t) => t.ticker))
 
   const { data: statusData } = useQuery<{ status: MarketStatus }>({
     queryKey: ['market-status'],
