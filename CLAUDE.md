@@ -159,11 +159,12 @@ AgentRecommendation {
 ├── CLAUDE.md              # this file
 ├── PRD.md                 # full product spec
 ├── apps/
-│   └── mobile/            # React Native app
+│   └── mobile/            # React Native app (Expo). Run with: npm run android / npm run ios
+│                          # Future: apps/web/ would share packages/shared and the same backend
 ├── packages/
 │   ├── agents/            # agent modules (one file per agent)
-│   ├── api/               # Node.js backend
-│   └── shared/            # shared types and utilities
+│   ├── api/               # Node.js backend (deployed to Railway)
+│   └── shared/            # shared types and utilities — used by mobile, api, and agents
 ```
 
 ---
