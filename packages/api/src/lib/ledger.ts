@@ -24,7 +24,7 @@ export async function executeTrade(trade: TradeInput): Promise<void> {
         // Deduct from challenge cash, not main portfolio
         const { rows } = await client.query(
           `UPDATE challenges SET challenge_cash = challenge_cash - $1
-           WHERE id = $2 AND challenge_cash >= $1 RETURNING id`,
+           WHERE id = $2 AND challenge_cash >= $1 AND status = 'active' RETURNING id`,
           [cost, trade.challengeId]
         )
         if (rows.length === 0) throw new Error('Insufficient cash')
@@ -76,7 +76,7 @@ export async function executeTrade(trade: TradeInput): Promise<void> {
 
       if (trade.challengeId) {
         await client.query(
-          `UPDATE challenges SET challenge_cash = challenge_cash + $1 WHERE id = $2`,
+          `UPDATE challenges SET challenge_cash = challenge_cash + $1 WHERE id = $2 AND status = 'active'`,
           [proceeds, trade.challengeId]
         )
       } else {
