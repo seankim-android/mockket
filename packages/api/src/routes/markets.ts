@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getEarnings } from '../lib/polygon'
-import { getQuotes } from '../lib/alpaca'
+import { getQuotes, searchAssets } from '../lib/alpaca'
 
 export const marketsRouter = Router()
 
@@ -73,5 +73,20 @@ marketsRouter.get('/snapshots', async (req, res) => {
     res.json(quotes)
   } catch {
     res.status(500).json({ error: 'Failed to fetch snapshots' })
+  }
+})
+
+// GET /markets/search?q=AAPL — search tradable US equity assets
+marketsRouter.get('/search', async (req, res) => {
+  const q = req.query.q
+  if (!q || typeof q !== 'string' || q.trim().length < 1) {
+    return res.status(400).json({ error: 'q query param is required' })
+  }
+
+  try {
+    const results = await searchAssets(q.trim())
+    res.json(results)
+  } catch {
+    res.status(500).json({ error: 'Failed to search assets' })
   }
 })

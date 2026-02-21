@@ -41,6 +41,27 @@ export async function getQuotes(tickers: string[]): Promise<Quote[]> {
   }))
 }
 
+export interface AssetResult {
+  ticker: string
+  name: string
+}
+
+// Search tradable US equity assets by symbol or name
+export async function searchAssets(query: string): Promise<AssetResult[]> {
+  const { data } = await client.get('/v2/assets', {
+    params: {
+      status: 'active',
+      asset_class: 'us_equity',
+      tradable: true,
+      search: query,
+    },
+  })
+  return (data as any[]).slice(0, 20).map((a) => ({
+    ticker: a.symbol,
+    name: a.name,
+  }))
+}
+
 // Check if market is currently open
 export async function getMarketStatus(): Promise<'open' | 'closed' | 'pre-market' | 'after-hours'> {
   const { data } = await client.get('/v1/clock')

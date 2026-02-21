@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { FlatList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
@@ -51,17 +51,46 @@ const STATUS_LABELS: Record<MarketStatus, string> = {
   closed: 'CLOSED',
 }
 
+interface AssetResult {
+  ticker: string
+  name: string
+}
+
 export default function MarketsScreen() {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const wsPrice = useLivePrices(TICKERS.map((t) => t.ticker))
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const isSearching = debouncedSearch.length > 0
+
+  const { data: searchResults, isFetching: searchFetching } = useQuery<AssetResult[]>({
+    queryKey: ['markets-search', debouncedSearch],
+    queryFn: () => api.get<AssetResult[]>(`/markets/search?q=${encodeURIComponent(debouncedSearch)}`),
+    enabled: isSearching,
+    staleTime: 60_000,
+  })
+
+  // Subscribe to live prices for featured tickers + any visible search results
+  const searchTickers = searchResults?.map((r) => r.ticker) ?? []
+  const featuredTickers = TICKERS.map((t) => t.ticker)
+  const wsPrice = useLivePrices(isSearching ? searchTickers : featuredTickers)
+
+  const snapshotTickers = isSearching
+    ? (searchResults ?? []).filter((r) => !r.ticker.includes('-')).map((r) => r.ticker)
+    : STOCK_TICKERS
 
   const { data: snapshotData } = useQuery<PriceUpdate[]>({
-    queryKey: ['market-snapshots'],
+    queryKey: ['market-snapshots', snapshotTickers],
     queryFn: () =>
       api.get<PriceUpdate[]>(
-        `/markets/snapshots?tickers=${STOCK_TICKERS.join(',')}`
+        `/markets/snapshots?tickers=${snapshotTickers.join(',')}`
       ),
+    enabled: snapshotTickers.length > 0,
     staleTime: 5 * 60_000,
     refetchInterval: 5 * 60_000,
   })
@@ -94,11 +123,9 @@ export default function MarketsScreen() {
 
   const status = statusData?.status ?? 'closed'
 
-  const filtered = TICKERS.filter(
-    (t) =>
-      t.ticker.toLowerCase().includes(search.toLowerCase()) ||
-      t.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered: TickerInfo[] = isSearching
+    ? (searchResults ?? []).map((r) => ({ ticker: r.ticker, name: r.name, type: 'stock' as const }))
+    : TICKERS
 
   return (
     <Screen>
@@ -122,6 +149,18 @@ export default function MarketsScreen() {
         onChangeText={setSearch}
         autoCapitalize="characters"
       />
+
+      {/* Search feedback */}
+      {isSearching && searchFetching && (
+        <Text variant="caption" color="secondary" style={{ paddingHorizontal: tokens.spacing[4], marginBottom: tokens.spacing[2] }}>
+          Searching...
+        </Text>
+      )}
+      {isSearching && !searchFetching && filtered.length === 0 && (
+        <Text variant="caption" color="secondary" style={{ paddingHorizontal: tokens.spacing[4], marginBottom: tokens.spacing[2] }}>
+          No results for "{debouncedSearch}"
+        </Text>
+      )}
 
       {/* Ticker list */}
       <FlatList
