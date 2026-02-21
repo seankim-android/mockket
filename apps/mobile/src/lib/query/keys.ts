@@ -21,4 +21,7 @@ export const queryKeys = {
 
   // Recommendations
   recommendations: (userId: string) => ['recommendations', userId] as const,
+
+  // Earnings
+  earnings: (tickers: string[]) => ['earnings', tickers.sort().join(',')] as const,
 } as const
