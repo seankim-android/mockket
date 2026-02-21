@@ -1,13 +1,16 @@
 import cron from 'node-cron'
 import { db } from '../db/client'
-import { getQuote } from '../lib/alpaca'
+import { getQuotes } from '../lib/alpaca'
 import { marcusBullChen, priyaSharma } from '@mockket/agents'
 import { sendPushToUser } from '../lib/fcm'
+import type { AgentModule } from '@mockket/agents'
+
+const AGENTS: AgentModule[] = [marcusBullChen, priyaSharma]
 
 async function generateRecommendations(agentId: string) {
-  const agent = agentId === 'marcus-bull-chen' ? marcusBullChen : priyaSharma
+  const agent = AGENTS.find(a => a.id === agentId)
+  if (!agent) return
 
-  // Find advisory hires for this agent
   const { rows: hires } = await db.query(
     `SELECT ah.*, u.portfolio_cash FROM agent_hires ah
      JOIN users u ON u.id = ah.user_id
@@ -28,28 +31,60 @@ async function generateRecommendations(agentId: string) {
       )
       if (existing.length > 0) continue
 
-      // Generate a recommendation (simplified: pick a ticker from watchlist)
-      const watchlist = agentId === 'marcus-bull-chen'
-        ? ['NVDA', 'TSLA', 'AMD']
-        : ['JNJ', 'MSFT', 'AAPL']
+      // Get agent's current holdings for this hire
+      const { rows: holdingRows } = await db.query(
+        `SELECT ticker, quantity, avg_cost FROM holdings
+         WHERE user_id = $1 AND agent_hire_id = $2`,
+        [hire.user_id, hire.id]
+      )
 
-      const ticker = watchlist[Math.floor(Math.random() * watchlist.length)]
-      const quote = await getQuote(ticker)
-      const quantity = Math.floor(1000 / quote.ask) // ~$1000 position
+      // Fetch current prices for all held tickers + agent watchlist
+      const watchlist = agentId === 'marcus-bull-chen'
+        ? ['NVDA', 'TSLA', 'AMD', 'META', 'AMZN']
+        : ['JNJ', 'MSFT', 'AAPL', 'KO', 'PG']
+      const heldTickers = holdingRows.map((h: any) => h.ticker)
+      const allTickers = [...new Set([...heldTickers, ...watchlist])]
+
+      const quotes = await getQuotes(allTickers)
+      const priceMap = Object.fromEntries(quotes.map(q => [q.ticker, q.mid]))
+
+      const portfolio = {
+        cash: Number(hire.allocated_cash),
+        holdings: holdingRows.map((h: any) => ({
+          ticker: h.ticker,
+          quantity: Number(h.quantity),
+          avgCost: Number(h.avg_cost),
+          currentPrice: priceMap[h.ticker] ?? 0,
+        })),
+      }
+
+      // Use agent's rebalance logic to determine what trades to recommend
+      const trades = await agent.rebalance(portfolio, {
+        prices: priceMap,
+        timestamp: new Date().toISOString(),
+      })
+
+      if (trades.length === 0) continue
+
+      // Take the first trade as today's recommendation
+      const trade = trades[0]
+      const quote = quotes.find(q => q.ticker === trade.ticker)
+      if (!quote) continue
+
+      const price = trade.action === 'buy' ? quote.ask : quote.bid
+      // For advisory recommendations, target ~$1000 position size for buys
+      // For sells, recommend selling the full quantity the agent would sell
+      const quantity = trade.action === 'buy'
+        ? Math.max(1, Math.floor(1000 / price))
+        : trade.quantity
+
       if (quantity < 1) continue
 
-      const action = 'buy'
       const rationale = agent.getRationale({
-        id: '',
+        ...trade,
         userId: hire.user_id,
-        agentId,
-        ticker,
-        action,
+        priceAtExecution: price,
         quantity,
-        priceAtExecution: quote.ask,
-        rationale: '',
-        challengeId: null,
-        executedAt: new Date().toISOString(),
       })
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -58,17 +93,15 @@ async function generateRecommendations(agentId: string) {
         `INSERT INTO agent_recommendations
            (user_id, agent_hire_id, agent_id, ticker, action, quantity, rationale, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [hire.user_id, hire.id, agentId, ticker, action, quantity, rationale, expiresAt]
+        [hire.user_id, hire.id, agentId, trade.ticker, trade.action, quantity, rationale, expiresAt]
       )
 
       const recId = rows[0].id
-
-      // Push notification
       await sendPushToUser(
         hire.user_id,
         `${agent.shortName} has a recommendation`,
-        `${action.toUpperCase()} ${ticker} — tap to review`,
-        { url: `https://mockket.app/recommendation/${recId}` }
+        `${trade.action.toUpperCase()} ${trade.ticker} — tap to review`,
+        { url: `https://mockket.app/recommendation/${recId}` },
       )
     } catch (err) {
       console.error(`[recommendations] Failed for hire ${hire.id}:`, err)
