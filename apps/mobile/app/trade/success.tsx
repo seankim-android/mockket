@@ -27,7 +27,7 @@ export default function TradeSuccess() {
       }
     }
     checkFirstTrade()
-  }, [])
+  }, [ticker, action, quantity, price, router])
 
   return (
     <View style={styles.container}>

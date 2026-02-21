@@ -69,6 +69,8 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   )
 }
 
+const Separator = () => <View style={styles.separator} />
+
 export default function ActivityScreen() {
   const { data: items = [], isLoading } = useQuery<ActivityItem[]>({
     queryKey: ['activity'],
@@ -112,7 +114,7 @@ export default function ActivityScreen() {
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ActivityRow item={item} />}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={Separator}
         contentContainerStyle={styles.list}
       />
     </View>

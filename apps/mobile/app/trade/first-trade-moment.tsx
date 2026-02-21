@@ -22,9 +22,14 @@ export default function FirstTradeMoment() {
     router.replace('/(tabs)/')
   }
 
-  function handleViewMarcus() {
-    handleContinue()
-    router.push('/agent/marcus-bull-chen')
+  async function handleViewMarcus() {
+    try {
+      await api.post('/users/ftue', { made_first_trade: true })
+      markStep({ mission1_trade_done: true, first_trade_annotation_shown: true })
+    } catch {
+      // non-critical
+    }
+    router.replace('/agent/marcus-bull-chen')
   }
 
   return (

@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Platform } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Platform, View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useSession } from '@/features/auth/hooks/useSession'
@@ -14,6 +14,11 @@ const queryClient = new QueryClient({
   },
 })
 
+const STORE_URL =
+  Platform.OS === 'ios'
+    ? 'https://apps.apple.com/app/mockket'
+    : 'https://play.google.com/store/apps/details?id=com.mockket'
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   useSession()
 
@@ -21,6 +26,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
   const router = useRouter()
   const inAuthGroup = segments[0] === '(auth)'
+  const [forceUpdate, setForceUpdate] = useState(false)
 
   useEffect(() => {
     if (isLoading) return
@@ -40,19 +46,46 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         const config = await res.json()
         const platform = Platform.OS === 'ios' ? config.ios : config.android
         if (platform?.updateMode === 'hard') {
-          router.replace('/force-update')
+          setForceUpdate(true)
         }
       } catch {
         // ignore — don't block launch on version check failure
       }
     }
     checkVersion()
-  }, [session, router])
+  }, [session])
 
   if (isLoading) return null
 
+  if (forceUpdate) {
+    return (
+      <View style={fuStyles.container}>
+        <Text style={fuStyles.title}>Update Required</Text>
+        <Text style={fuStyles.body}>
+          This version of Mockket is no longer supported. Update to keep trading.
+        </Text>
+        <TouchableOpacity
+          style={fuStyles.cta}
+          onPress={() => Linking.openURL(STORE_URL)}
+          accessibilityRole="button"
+          accessibilityLabel="Update Mockket now"
+        >
+          <Text style={fuStyles.ctaLabel}>Update Now</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   return <>{children}</>
 }
+
+const fuStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  title: { color: '#F8FAFC', fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 16 },
+  body: { color: '#94A3B8', fontSize: 16, textAlign: 'center', lineHeight: 24, marginBottom: 32 },
+  cta: { backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 32 },
+  ctaLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
+})
 
 export default function RootLayout() {
   return (

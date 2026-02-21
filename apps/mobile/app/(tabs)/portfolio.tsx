@@ -3,6 +3,7 @@ import { Alert, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, Vie
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Text } from '@/components/primitives'
 import { api } from '@/lib/api/client'
+import { supabase } from '@/lib/supabase'
 import { tokens } from '@/design/tokens'
 
 interface Portfolio {
@@ -75,6 +76,12 @@ export default function PortfolioScreen() {
     mutationFn: (patch: Partial<NotificationPrefs>) =>
       api.patch('/users/me/notification-preferences', patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notif-prefs'] }),
+  })
+
+  const { mutate: deleteAccount, isPending: isDeleting } = useMutation({
+    mutationFn: () => api.delete('/users/me'),
+    onSuccess: () => supabase.auth.signOut(),
+    onError: () => Alert.alert('Error', 'Failed to delete account. Please try again.'),
   })
 
   const totalValue = portfolio ? calcPortfolioValue(portfolio) : 0
@@ -250,9 +257,9 @@ export default function PortfolioScreen() {
                     autoCapitalize="characters"
                   />
                   <TouchableOpacity
-                    style={[styles.deleteBtn, deleteInput !== 'DELETE' && { opacity: 0.4 }]}
-                    disabled={deleteInput !== 'DELETE'}
-                    onPress={() => api.delete('/users/me')}
+                    style={[styles.deleteBtn, (deleteInput !== 'DELETE' || isDeleting) && { opacity: 0.4 }]}
+                    disabled={deleteInput !== 'DELETE' || isDeleting}
+                    onPress={() => deleteAccount()}
                   >
                     <Text variant="label" style={{ color: '#fff' }}>Delete my account</Text>
                   </TouchableOpacity>

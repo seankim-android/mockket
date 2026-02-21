@@ -21,9 +21,18 @@ export default function SignUp() {
   const [error, setError] = useState<string | null>(null)
 
   async function handleSignUp() {
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
     setLoading(true)
     setError(null)
-    const { error: err } = await supabase.auth.signUp({ email, password })
+    const { error: err } = await supabase.auth.signUp({ email: trimmedEmail, password })
     setLoading(false)
     if (err) {
       setError(err.message)

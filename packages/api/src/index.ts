@@ -30,7 +30,7 @@ const app = express()
 const PORT = process.env.PORT ?? 3000
 
 app.use(helmet())
-app.use(cors({ origin: '*' })) // tighten in production
+app.use(cors({ origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*' }))
 app.use(express.json())
 
 // Health check
