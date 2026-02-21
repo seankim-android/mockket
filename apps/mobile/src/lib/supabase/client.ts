@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as SecureStore from 'expo-secure-store'
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 
 // Supabase requires a custom storage adapter for Expo
 // expo-secure-store keeps the session in the device keychain
