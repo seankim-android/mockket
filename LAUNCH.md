@@ -8,15 +8,15 @@ Work through each section in order. Later sections depend on earlier ones.
 
 The database and auth both run on Supabase.
 
-- [ ] Create a Supabase project at supabase.com
+- [x] Create a Supabase project at supabase.com
 - [ ] Enable **Apple** OAuth provider: Authentication → Providers → Apple
 - [ ] Enable **Google** OAuth provider: Authentication → Providers → Google
 - [ ] Add your backend domain to **Allowed Redirect URLs**: Authentication → URL Configuration
-- [ ] Collect credentials:
+- [x] Collect credentials:
   - `SUPABASE_URL` — Project Settings → API → Project URL
-  - `SUPABASE_SERVICE_ROLE_KEY` — Project Settings → API → service_role key (keep secret)
+  - `SUPABASE_SECRET_KEY` — Project Settings → API → Secret key (keep secret)
   - `SUPABASE_JWT_SECRET` — Project Settings → API → JWT Secret
-  - `DATABASE_URL` — Project Settings → Database → Connection string → URI (use **Transaction** mode for pooled connection)
+  - `DATABASE_URL` — Project Settings → Database → Connection Pooling → Transaction mode URI (port 6543, required for IPv4 on Railway)
 
 ---
 
@@ -27,9 +27,9 @@ Used for push notifications (FCM HTTP v1 API).
 - [ ] Create a Firebase project at console.firebase.google.com
 - [ ] Add your **iOS app** and **Android app** to the Firebase project (needed for device registration)
 - [ ] Enable **Cloud Messaging**: Project Settings → Cloud Messaging → enable
-- [ ] Generate a service account key: Project Settings → Service accounts → Generate new private key
-- [ ] Flatten the downloaded JSON to a single line (remove all newlines) — this is `FIREBASE_SERVICE_ACCOUNT`
-- [ ] Collect credentials:
+- [x] Generate a service account key: Project Settings → Service accounts → Generate new private key
+- [x] Flatten the downloaded JSON to a single line (remove all newlines) — this is `FIREBASE_SERVICE_ACCOUNT`
+- [x] Collect credentials:
   - `FIREBASE_PROJECT_ID` — shown in Project Settings → General
   - `FIREBASE_SERVICE_ACCOUNT` — the single-line JSON from above
 
@@ -45,7 +45,7 @@ Used for the $0.99 portfolio reset consumable.
 - [ ] In **Google Play Console**: create a one-time product with ID `mockket_reset`, price $0.99
 - [ ] In RevenueCat: add `mockket_reset` as a product (Products tab) — no entitlement needed for a consumable
 - [ ] In RevenueCat: add a webhook pointing to `https://your-backend-url/webhooks/revenuecat` (Project Settings → Integrations → Webhooks)
-- [ ] Collect credentials:
+- [x] Collect credentials:
   - `REVENUECAT_SECRET_KEY` — RevenueCat dashboard → Project Settings → API keys → Secret key
 
 ---
@@ -54,8 +54,8 @@ Used for the $0.99 portfolio reset consumable.
 
 Used as a read-only real-time price feed (no trades go to Alpaca).
 
-- [ ] Sign up at alpaca.markets and generate **paper trading** API keys
-- [ ] Collect credentials:
+- [x] Sign up at alpaca.markets and generate **paper trading** API keys
+- [x] Collect credentials:
   - `ALPACA_API_KEY`
   - `ALPACA_API_SECRET`
   - `ALPACA_BASE_URL=https://paper-api.alpaca.markets`
@@ -67,8 +67,8 @@ Used as a read-only real-time price feed (no trades go to Alpaca).
 
 Used for pub/sub fan-out of live prices to WebSocket clients and for session caching. [Upstash](https://upstash.com) is recommended (free tier, serverless, no idle cost).
 
-- [ ] Create a Redis database at upstash.com (or use any Redis provider)
-- [ ] Collect credentials:
+- [x] Create a Redis database at upstash.com (or use any Redis provider)
+- [x] Collect credentials:
   - `REDIS_URL` — the full connection string (e.g. `redis://default:password@host:port`)
 
 ---
@@ -89,9 +89,9 @@ Set all of the following in your production backend environment. You should have
 
 | Variable | Required | Source |
 |---|---|---|
-| `DATABASE_URL` | Yes | Supabase → Project Settings → Database |
+| `DATABASE_URL` | Yes | Supabase → Project Settings → Database → Connection Pooling (Transaction mode) |
 | `SUPABASE_URL` | Yes | Supabase → Project Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase → Project Settings → API |
+| `SUPABASE_SECRET_KEY` | Yes | Supabase → Project Settings → API |
 | `SUPABASE_JWT_SECRET` | Yes | Supabase → Project Settings → API |
 | `REDIS_URL` | Yes | Upstash or Redis provider |
 | `FIREBASE_PROJECT_ID` | Yes | Firebase → Project Settings |
@@ -103,7 +103,9 @@ Set all of the following in your production backend environment. You should have
 | `APPLE_CLIENT_ID` | Yes | Apple Developer → Identifiers → Services ID |
 | `CORS_ORIGIN` | No | Your mobile app's origin, or leave unset to allow all |
 | `POLYGON_API_KEY` | No | Polygon.io dashboard |
-| `PORT` | No | Defaults to `3000` |
+| `PORT` | No | Defaults to `3000` (Railway sets this automatically) |
+
+- [x] All required variables set in Railway
 
 ---
 
@@ -136,6 +138,8 @@ All are idempotent — safe to re-run.
 | 012 | `split_events` — stock split detection and adjustment tracking |
 | 013 | `agent_reactions` — per-trade agent reaction messages |
 | 014 | `portfolio_reset_receipts` — prevents double-spend on reset IAP |
+
+- [x] All migrations run against Supabase
 
 ---
 
