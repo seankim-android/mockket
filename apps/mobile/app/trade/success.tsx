@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { StyleSheet, View, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Text } from '@/components/primitives'
 import { tokens } from '@/design/tokens'
+import { api } from '@/lib/api/client'
 
 export default function TradeSuccess() {
   const router = useRouter()
@@ -9,6 +11,20 @@ export default function TradeSuccess() {
     ticker: string; action: string; quantity: string; price: string; dayTradeCount: string
   }>()
   const dtCount = dayTradeCount ? Number(dayTradeCount) : 0
+
+  useEffect(() => {
+    async function checkFirstTrade() {
+      try {
+        const ftue = await api.get<{ made_first_trade?: boolean }>('/users/ftue')
+        if (!ftue.made_first_trade) {
+          router.replace('/trade/first-trade-moment')
+        }
+      } catch {
+        // non-critical
+      }
+    }
+    checkFirstTrade()
+  }, [])
 
   return (
     <View style={styles.container}>
