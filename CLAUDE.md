@@ -131,6 +131,7 @@ Challenge {
   id, userId, agentId (nullable), opponentUserId (nullable)
   duration: "1w" | "1m" | "3m"
   startingBalance: number        // cash drawn from main portfolio at challenge start
+  challengeCash: number          // current cash balance within the challenge (starts = startingBalance)
   status: "pending" | "active" | "completed" | "forfeited" | "expired"
   // "pending" = friend challenge sent, awaiting acceptance
   // "expired" = friend challenge not accepted within 24h
@@ -177,9 +178,13 @@ COINGECKO_API_KEY          # optional, free tier available without key
 DATABASE_URL               # Postgres connection string
 REDIS_URL
 FIREBASE_PROJECT_ID
-FIREBASE_SERVICE_ACCOUNT
+FIREBASE_SERVICE_ACCOUNT   # full JSON as single line (replaces legacy FCM_SERVER_KEY)
 APPLE_CLIENT_ID            # for Sign in with Apple
 REVENUECAT_SECRET_KEY      # server-side secret for verifying IAP receipts via RevenueCat REST API
+SUPABASE_URL               # Supabase project URL
+SUPABASE_SERVICE_ROLE_KEY  # Supabase service role key (server-side only, never expose to client)
+SUPABASE_JWT_SECRET        # for local JWT verification (Supabase dashboard > Settings > API)
+POLYGON_API_KEY            # for stock split data (optional — splits won't be detected without it)
 ```
 
 ---
@@ -205,6 +210,7 @@ REVENUECAT_SECRET_KEY      # server-side secret for verifying IAP receipts via R
 
 **Challenges & social**
 - [x] 1-week and 1-month challenge creation and scoring
+- [x] Challenge cash ledger
 - [x] Friend challenge invite flow (link + username search)
 - [x] Leaderboard (top 50, opt-in to appear, top 5 preview on Home)
 - [x] End-of-challenge recap screen
@@ -220,6 +226,4 @@ REVENUECAT_SECRET_KEY      # server-side secret for verifying IAP receipts via R
 - [x] Auth (email + Apple + Google)
 - [x] Portfolio reset IAP ($0.99)
 - [x] Push notifications (FCM)
-
-**Still missing**
 - [x] Agent reactions (max 1/day: triggers on >3% portfolio trade or agent-held ticker)
