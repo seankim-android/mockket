@@ -5,6 +5,7 @@ import { Text } from '@/components/primitives'
 import { api } from '@/lib/api/client'
 import { supabase } from '@/lib/supabase'
 import { tokens } from '@/design/tokens'
+import { usePremium } from '@/features/premium/usePremium'
 
 interface Portfolio {
   cash: number
@@ -46,6 +47,7 @@ export default function PortfolioScreen() {
   const [tab, setTab] = useState<'portfolio' | 'settings'>('portfolio')
   const [deleteInput, setDeleteInput] = useState('')
   const [showDelete, setShowDelete] = useState(false)
+  const { resetPortfolio, isResetting } = usePremium()
 
   const { data: portfolio } = useQuery<Portfolio>({
     queryKey: ['portfolio'],
@@ -83,6 +85,39 @@ export default function PortfolioScreen() {
     onSuccess: () => supabase.auth.signOut(),
     onError: () => Alert.alert('Error', 'Failed to delete account. Please try again.'),
   })
+
+  function handleResetPortfolio() {
+    Alert.alert(
+      'Reset Portfolio',
+      'This will reset your cash to $100,000. Holdings, trade history, and agent logs are preserved. Active challenges must be completed first.\n\nThis costs $0.99.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue ($0.99)',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await resetPortfolio()
+              Alert.alert('Done', 'Your portfolio has been reset to $100,000.')
+            } catch (err: any) {
+              if (err?.userCancelled) {
+                return
+              }
+              const message: string = err?.message ?? ''
+              if (message.includes('active challenge')) {
+                Alert.alert(
+                  'Challenge In Progress',
+                  'You cannot reset while an active challenge is running. Complete or forfeit your challenge first.'
+                )
+              } else {
+                Alert.alert('Reset Failed', 'Something went wrong. Please try again.')
+              }
+            }
+          },
+        },
+      ]
+    )
+  }
 
   const totalValue = portfolio ? calcPortfolioValue(portfolio) : 0
   const returnPct = ((totalValue - 100_000) / 100_000) * 100
@@ -171,17 +206,15 @@ export default function PortfolioScreen() {
             </View>
           )}
 
-          {/* Reset button (IAP — placeholder) */}
+          {/* Reset Portfolio — IAP gated */}
           <TouchableOpacity
-            style={styles.resetBtn}
-            onPress={() =>
-              Alert.alert('Reset Portfolio', 'This costs $0.99. Are you sure?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Reset ($0.99)', style: 'destructive', onPress: () => api.post('/portfolio/reset', {}) },
-              ])
-            }
+            style={[styles.resetBtn, isResetting && { opacity: 0.5 }]}
+            disabled={isResetting}
+            onPress={handleResetPortfolio}
           >
-            <Text variant="label" style={{ color: tokens.colors.negative }}>Reset Portfolio — $0.99</Text>
+            <Text variant="label" style={{ color: tokens.colors.negative }}>
+              {isResetting ? 'Processing...' : 'Reset Portfolio — $0.99'}
+            </Text>
           </TouchableOpacity>
         </>
       ) : (

@@ -15,6 +15,11 @@ interface TickerInfo {
   type: 'stock' | 'crypto'
 }
 
+interface EarningsEntry {
+  reportsAt: string
+  isWithin7Days: boolean
+}
+
 const TICKERS: TickerInfo[] = [
   { ticker: 'AAPL', name: 'Apple', type: 'stock' },
   { ticker: 'MSFT', name: 'Microsoft', type: 'stock' },
@@ -28,24 +33,8 @@ const TICKERS: TickerInfo[] = [
   { ticker: 'ETH-USD', name: 'Ethereum', type: 'crypto' },
 ]
 
-// Hardcoded earnings dates for MVP (updated manually when needed)
-const EARNINGS_DATES: Record<string, string> = {
-  AAPL: '2026-02-06',
-  MSFT: '2026-01-29',
-  NVDA: '2026-02-26',
-  TSLA: '2026-01-29',
-  AMD: '2026-02-04',
-  GOOGL: '2026-02-04',
-  AMZN: '2026-02-06',
-  META: '2026-01-29',
-}
-
-function isEarningsWithin7Days(ticker: string): boolean {
-  const date = EARNINGS_DATES[ticker]
-  if (!date) return false
-  const diff = new Date(date).getTime() - Date.now()
-  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
-}
+// Only stock tickers are queried — Polygon earnings don't cover crypto.
+const STOCK_TICKERS = TICKERS.filter((t) => t.type === 'stock').map((t) => t.ticker)
 
 const STATUS_COLORS: Record<MarketStatus, string> = {
   open: tokens.colors.positive,
@@ -70,6 +59,17 @@ export default function MarketsScreen() {
     queryKey: ['market-status'],
     queryFn: () => api.get<{ status: MarketStatus }>('/market-status'),
     refetchInterval: 60_000,
+  })
+
+  const { data: earningsData } = useQuery<Record<string, EarningsEntry>>({
+    queryKey: ['earnings', STOCK_TICKERS],
+    queryFn: () =>
+      api.get<Record<string, EarningsEntry>>(
+        `/markets/earnings?tickers=${STOCK_TICKERS.join(',')}`
+      ),
+    // Refresh once per hour — earnings dates don't change frequently.
+    refetchInterval: 60 * 60_000,
+    staleTime: 30 * 60_000,
   })
 
   const status = statusData?.status ?? 'closed'
@@ -109,6 +109,7 @@ export default function MarketsScreen() {
         keyExtractor={(item) => item.ticker}
         renderItem={({ item }) => {
           const price = prices[item.ticker]
+          const hasEarnings = earningsData?.[item.ticker]?.isWithin7Days ?? false
           return (
             <TouchableOpacity
               style={styles.row}
@@ -118,9 +119,9 @@ export default function MarketsScreen() {
               <View style={styles.rowLeft}>
                 <View style={styles.rowTitleRow}>
                   <Text variant="label">{item.ticker}</Text>
-                  {isEarningsWithin7Days(item.ticker) && (
+                  {hasEarnings && (
                     <View style={styles.earningsBadge}>
-                      <Text variant="caption" style={{ color: tokens.colors.warning }}>Earnings</Text>
+                      <Text variant="caption" style={{ color: tokens.colors.warning }}>EARNINGS</Text>
                     </View>
                   )}
                   {item.type === 'crypto' && (

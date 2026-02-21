@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { purchasePremium, purchaseReset } from '@/lib/purchases/client'
+import { purchasePremium, purchasePortfolioReset } from '@/lib/purchases/client'
 import { api } from '@/lib/api/client'
 
 export function usePremium() {
@@ -12,7 +12,7 @@ export function usePremium() {
 
   const { mutateAsync: resetPortfolio, isPending: isResetting } = useMutation({
     mutationFn: async () => {
-      await purchaseReset()
+      await purchasePortfolioReset()
       return api.post('/portfolio/reset', {})
     },
     onSuccess: () => {

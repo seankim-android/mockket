@@ -108,68 +108,82 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   )
   const dayTradeCount = Number(dtRows[0].count)
 
-  res.json({ ok: true, price, executedAt: new Date().toISOString(), dayTradeCount })
+  // Agent reaction triggers — run before responding so reactions appear in the response
+  const reactions: Array<{ agentId: string; agentName: string; reaction: string }> = []
+  try {
+    const { rows: hires } = await db.query(
+      `SELECT ah.id, ah.agent_id, ah.last_reaction_at, u.portfolio_cash FROM agent_hires ah
+       JOIN users u ON u.id = ah.user_id
+       WHERE ah.user_id = $1 AND ah.is_active = TRUE AND ah.is_paused = FALSE`,
+      [userId]
+    )
 
-  // Agent reaction triggers — run after responding (non-blocking)
-  void (async () => {
-    try {
-      const { rows: hires } = await db.query(
-        `SELECT ah.id, ah.agent_id, ah.last_reaction_at, u.portfolio_cash FROM agent_hires ah
-         JOIN users u ON u.id = ah.user_id
-         WHERE ah.user_id = $1 AND ah.is_active = TRUE AND ah.is_paused = FALSE`,
-        [userId]
-      )
+    const { rows: holdingsRows } = await db.query(
+      `SELECT COALESCE(SUM(quantity * avg_cost), 0) as holdings_value
+       FROM holdings
+       WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
+      [userId]
+    )
+    const holdingsValue = holdingsRows[0].holdings_value
 
-      const { rows: holdingsRows } = await db.query(
-        `SELECT COALESCE(SUM(quantity * avg_cost), 0) as holdings_value
-         FROM holdings
-         WHERE user_id = $1 AND agent_hire_id IS NULL AND challenge_id IS NULL`,
-        [userId]
-      )
-      const holdingsValue = holdingsRows[0].holdings_value
+    const tradeValue = quantity * price
+    for (const hire of hires) {
+      try {
+        const portfolioValue = Number(hire.portfolio_cash) + Number(holdingsValue)
+        const isBigTrade = portfolioValue > 0 && tradeValue / portfolioValue > 0.03
 
-      const tradeValue = quantity * price
-      for (const hire of hires) {
-        try {
-          const portfolioValue = Number(hire.portfolio_cash) + Number(holdingsValue)
-          const isBigTrade = portfolioValue > 0 && tradeValue / portfolioValue > 0.03
-
-          // Check ticker overlap (agent traded this ticker in the last 7 days)
-          const { rows: overlap } = await db.query(
-            `SELECT id FROM trades WHERE agent_id = $1 AND ticker = $2
+        // Check ticker overlap: agent currently holds OR traded this ticker in the last 7 days
+        const { rows: overlap } = await db.query(
+          `SELECT 1 FROM holdings WHERE agent_hire_id = $1 AND ticker = $2 LIMIT 1
+           UNION ALL
+           SELECT 1 FROM trades WHERE agent_id = $3 AND ticker = $2
              AND executed_at > NOW() - INTERVAL '7 days' LIMIT 1`,
-            [hire.agent_id, ticker]
-          )
-          const hasOverlap = overlap.length > 0
+          [hire.id, ticker, hire.agent_id]
+        )
+        const hasOverlap = overlap.length > 0
 
-          if (!isBigTrade && !hasOverlap) continue
+        if (!isBigTrade && !hasOverlap) continue
 
-          // Rate limit: max 1 reaction per agent per day
-          if (hire.last_reaction_at) {
-            const lastReaction = new Date(hire.last_reaction_at)
-            const hoursSince = (Date.now() - lastReaction.getTime()) / (1000 * 60 * 60)
-            if (hoursSince < 24) continue
-          }
-
-          const agent = AGENT_MAP[hire.agent_id]
-          if (!agent) continue
-
-          const reaction = agent.react({ ticker, action, quantity, priceAtExecution: price } as any)
-          await sendPushToUser(userId, agent.shortName, reaction)
-
-          // Record reaction timestamp
-          await db.query(
-            `UPDATE agent_hires SET last_reaction_at = NOW() WHERE id = $1`,
-            [hire.id]
-          )
-        } catch (err) {
-          console.error(`[reactions] Failed for agent ${hire.agent_id}:`, err)
+        // Rate limit: max 1 reaction per agent per day
+        if (hire.last_reaction_at) {
+          const lastReaction = new Date(hire.last_reaction_at)
+          const hoursSince = (Date.now() - lastReaction.getTime()) / (1000 * 60 * 60)
+          if (hoursSince < 24) continue
         }
+
+        const agent = AGENT_MAP[hire.agent_id]
+        if (!agent) continue
+
+        const reaction = agent.react({ ticker, action, quantity, priceAtExecution: price } as any)
+
+        // Record reaction timestamp and save to agent_reactions table
+        await db.query(
+          `UPDATE agent_hires SET last_reaction_at = NOW() WHERE id = $1`,
+          [hire.id]
+        )
+        await db.query(
+          `INSERT INTO agent_reactions (user_id, agent_id, trade_id, reaction)
+           SELECT $1, $2, id, $3 FROM trades
+           WHERE user_id = $1 AND ticker = $4 AND action = $5
+           ORDER BY executed_at DESC LIMIT 1`,
+          [userId, hire.agent_id, reaction, ticker, action]
+        )
+
+        reactions.push({ agentId: hire.agent_id, agentName: agent.shortName, reaction })
+
+        // Fire-and-forget push notification
+        void sendPushToUser(userId, agent.shortName, reaction).catch(err =>
+          console.error(`[reactions] Push failed for agent ${hire.agent_id}:`, err)
+        )
+      } catch (err) {
+        console.error(`[reactions] Failed for agent ${hire.agent_id}:`, err)
       }
-    } catch (err) {
-      console.error('[reactions] Failed to check triggers:', err)
     }
-  })()
+  } catch (err) {
+    console.error('[reactions] Failed to check triggers:', err)
+  }
+
+  res.json({ ok: true, price, executedAt: new Date().toISOString(), dayTradeCount, reactions })
 })
 
 // GET /trades — trade history for current user

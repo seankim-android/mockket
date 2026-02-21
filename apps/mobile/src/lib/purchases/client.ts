@@ -18,9 +18,11 @@ export async function purchasePremium(packageId: 'monthly' | 'annual') {
   return Purchases.purchasePackage(pkg)
 }
 
-export async function purchaseReset() {
+export async function purchasePortfolioReset() {
   const offerings = await Purchases.getOfferings()
-  const pkg = offerings.all['iap']?.availablePackages.find(p => p.identifier === 'reset')
+  const pkg = offerings.all['iap']?.availablePackages.find(
+    (p) => p.identifier === 'mockket_portfolio_reset'
+  )
   if (!pkg) throw new Error('Reset package not found')
   return Purchases.purchasePackage(pkg)
 }

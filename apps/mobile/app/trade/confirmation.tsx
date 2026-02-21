@@ -35,10 +35,20 @@ export default function TradeConfirmation() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.post<{ dayTradeCount: number }>('/trades', { ticker, action, quantity: qty })
+      const data = await api.post<{
+        dayTradeCount: number
+        reactions: Array<{ agentId: string; agentName: string; reaction: string }>
+      }>('/trades', { ticker, action, quantity: qty })
       router.replace({
         pathname: '/trade/success',
-        params: { ticker, action, quantity, price, dayTradeCount: data.dayTradeCount },
+        params: {
+          ticker,
+          action,
+          quantity,
+          price,
+          dayTradeCount: data.dayTradeCount,
+          reactions: JSON.stringify(data.reactions ?? []),
+        },
       })
     } catch (err: any) {
       setError(err.message ?? 'Trade failed')

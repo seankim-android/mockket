@@ -186,36 +186,39 @@ APPLE_CLIENT_ID            # for Sign in with Apple
 ## MVP Checklist
 
 **Core trading**
-- [ ] Alpaca API integration (stocks, paper trading)
-- [ ] WebSocket price feed → Redis pub/sub → client
-- [ ] Bid/ask spread on trade confirmation (buy at ask, sell at bid)
-- [ ] Market hours enforcement + after-hours order queuing
-- [ ] Market status indicator (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS)
-- [ ] PDT warning (2+ day trades in 5-day window)
-- [ ] Dividend credits on ex-dividend date
-- [ ] Stock split position adjustment
-- [ ] Earnings calendar badges (within 7 days of reporting)
+- [x] Alpaca API integration (stocks, paper trading)
+- [x] WebSocket price feed → Redis pub/sub → client
+- [x] Bid/ask spread on trade confirmation (buy at ask, sell at bid)
+- [x] Market hours enforcement + after-hours order queuing
+- [x] Market status indicator (OPEN / CLOSED / PRE-MARKET / AFTER-HOURS)
+- [x] PDT warning (2+ day trades in 5-day window)
+- [x] Dividend credits on ex-dividend date
+- [x] Stock split position adjustment
+- [x] Earnings calendar badges (within 7 days of reporting)
 
 **Portfolio & agents**
-- [ ] Portfolio management (cash balance, holdings, P&L)
-- [ ] Marcus and Priya agent modules
-- [ ] Advisory mode recommendation flow
-- [ ] Agent trade log with rationale
+- [x] Portfolio management (cash balance, holdings, P&L)
+- [x] Marcus and Priya agent modules
+- [x] Advisory mode recommendation flow
+- [x] Agent trade log with rationale
 
 **Challenges & social**
-- [ ] 1-week and 1-month challenge creation and scoring
-- [ ] Friend challenge invite flow (link + username search)
-- [ ] Leaderboard (top 50, opt-in to appear, top 5 preview on Home)
-- [ ] End-of-challenge recap screen
+- [x] 1-week and 1-month challenge creation and scoring
+- [x] Friend challenge invite flow (link + username search)
+- [x] Leaderboard (top 50, opt-in to appear, top 5 preview on Home)
+- [x] End-of-challenge recap screen
 
 **FTUE**
-- [ ] Mission 1 cards on Home (3 sequential actions)
-- [ ] Agent intro message (Marcus, fires within 2 min of account creation)
-- [ ] Annotated first trade confirmation (bid/ask + execution price labels)
-- [ ] Post-first-trade moment screen
-- [ ] Day 2 re-engagement message
+- [x] Mission 1 cards on Home (3 sequential actions)
+- [x] Agent intro message (Marcus, fires within 2 min of account creation)
+- [x] Annotated first trade confirmation (bid/ask + execution price labels)
+- [x] Post-first-trade moment screen
+- [x] Day 2 re-engagement message
 
 **Infrastructure**
-- [ ] Auth (email + Apple + Google)
-- [ ] Portfolio reset IAP ($0.99)
-- [ ] Push notifications (FCM)
+- [x] Auth (email + Apple + Google)
+- [x] Portfolio reset IAP ($0.99)
+- [x] Push notifications (FCM)
+
+**Still missing**
+- [x] Agent reactions (max 1/day: triggers on >3% portfolio trade or agent-held ticker)

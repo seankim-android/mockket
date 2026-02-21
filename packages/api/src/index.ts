@@ -14,6 +14,7 @@ import { configRouter } from './routes/config'
 import { usersRouter } from './routes/users'
 import { agentHiresRouter } from './routes/agent-hires'
 import { activityRouter } from './routes/activity'
+import { marketsRouter } from './routes/markets'
 import { startMarketDataCron } from './cron/sync-market-data'
 import { startAgentCrons } from './cron/agent-rebalance'
 import { startRecommendationCron } from './cron/generate-recommendations'
@@ -46,6 +47,7 @@ app.use('/config', configRouter)
 app.use('/users', usersRouter)
 app.use('/agent-hires', agentHiresRouter)
 app.use('/activity', activityRouter)
+app.use('/markets', marketsRouter)
 
 app.use(errorHandler)
 
