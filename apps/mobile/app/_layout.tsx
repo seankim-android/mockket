@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import { Platform, View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import * as WebBrowser from 'expo-web-browser'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useAuthStore } from '@/features/auth/store'
 import { supabase } from '@/lib/supabase'
+
+// Required for WebBrowser.openAuthSessionAsync to close the browser after OAuth redirect
+WebBrowser.maybeCompleteAuthSession()
 
 const queryClient = new QueryClient({
   defaultOptions: {

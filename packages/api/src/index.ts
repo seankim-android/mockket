@@ -36,6 +36,32 @@ app.use(express.json())
 // Health check
 app.get('/health', (_req, res) => res.json({ ok: true }))
 
+// Universal Links — iOS Apple App Site Association
+app.get('/.well-known/apple-app-site-association', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json')
+  res.json({
+    applinks: {
+      apps: [],
+      details: [{
+        appID: 'P9JCC93UUW.app.mockket',
+        paths: ['/auth/callback'],
+      }],
+    },
+  })
+})
+
+// Universal Links — Android Digital Asset Links
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+  res.json([{
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: {
+      namespace: 'android_app',
+      package_name: 'app.mockket',
+      sha256_cert_fingerprints: ['08:5C:A6:79:4C:63:C1:B9:99:21:B4:BE:E9:28:4A:47:7D:30:2D:73:20:B5:9E:2A:7D:68:B3:93:AB:F2:CC:ED'],
+    },
+  }])
+})
+
 // Routes
 app.use('/portfolio', portfolioRouter)
 app.use('/trades', tradesRouter)
