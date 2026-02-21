@@ -44,9 +44,10 @@ export const marcusBullChen: AgentModule = {
       if (!price) continue
       const alreadyHeld = portfolio.holdings.some(h => h.ticker === ticker)
       if (alreadyHeld) continue
+      const askPrice = marketData.ask[ticker] ?? price
       const allocation = Math.min(totalValue * 0.10, portfolio.cash)
       if (allocation < 1000) continue
-      const quantity = Math.floor(allocation / price)
+      const quantity = Math.floor(allocation / askPrice)
       if (quantity < 1) continue
 
       trades.push({
@@ -56,7 +57,7 @@ export const marcusBullChen: AgentModule = {
         ticker,
         action: 'buy',
         quantity,
-        priceAtExecution: price,
+        priceAtExecution: askPrice,
         rationale: `Volume spike on $${ticker}, classic breakout setup, went in heavy.`,
         challengeId: null,
         executedAt: new Date().toISOString(),

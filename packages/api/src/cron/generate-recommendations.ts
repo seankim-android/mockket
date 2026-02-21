@@ -61,6 +61,8 @@ async function generateRecommendations(agentId: string) {
       // Use agent's rebalance logic to determine what trades to recommend
       const trades = await agent.rebalance(portfolio, {
         prices: priceMap,
+        ask: Object.fromEntries(quotes.map(q => [q.ticker, q.ask])),
+        bid: Object.fromEntries(quotes.map(q => [q.ticker, q.bid])),
         timestamp: new Date().toISOString(),
       })
 

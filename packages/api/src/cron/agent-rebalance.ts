@@ -31,10 +31,9 @@ async function runAgentRebalance(agentId: string) {
 
       const tickers = holdingRows.map((h: any) => h.ticker)
       const prices = tickers.length > 0 ? await getQuotes(tickers) : []
-      // NOTE: priceMap uses mid price for agent rebalance decisions. MarketData.prices is typed
-      // as Record<string, number> so we cannot pass ask/bid objects without updating both agent
-      // modules (marcus, priya) which access prices[ticker] as a plain number. Tracked as #18.
       const priceMap = Object.fromEntries(prices.map(p => [p.ticker, p.mid]))
+      const askMap = Object.fromEntries(prices.map(p => [p.ticker, p.ask]))
+      const bidMap = Object.fromEntries(prices.map(p => [p.ticker, p.bid]))
 
       const portfolio = {
         cash: Number(hire.allocated_cash),
@@ -48,6 +47,8 @@ async function runAgentRebalance(agentId: string) {
 
       const trades = await agent.rebalance(portfolio, {
         prices: priceMap,
+        ask: askMap,
+        bid: bidMap,
         timestamp: new Date().toISOString(),
       })
 
