@@ -86,5 +86,11 @@ export async function processScheduledJobs() {
 
 export function startScheduledJobsCron() {
   // Run every minute
-  cron.schedule('* * * * *', processScheduledJobs)
+  cron.schedule('* * * * *', async () => {
+    try {
+      await processScheduledJobs()
+    } catch (err) {
+      console.error('[scheduled-jobs] Cron failed:', err)
+    }
+  })
 }
