@@ -2,7 +2,6 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Text } from '@/components/primitives'
 import { tokens } from '@/design/tokens'
-import { api } from '@/lib/api/client'
 import { useFtue } from '@/features/ftue/useFtue'
 
 export default function FirstTradeMoment() {
@@ -12,23 +11,13 @@ export default function FirstTradeMoment() {
   }>()
   const { markStep } = useFtue()
 
-  async function handleContinue() {
-    try {
-      await api.post('/users/ftue', { made_first_trade: true })
-      markStep({ mission1_trade_done: true, first_trade_annotation_shown: true })
-    } catch {
-      // non-critical
-    }
+  function handleContinue() {
+    markStep({ madeFirstTrade: true, firstTradeAnnotationShown: true })
     router.replace('/(tabs)/')
   }
 
-  async function handleViewMarcus() {
-    try {
-      await api.post('/users/ftue', { made_first_trade: true })
-      markStep({ mission1_trade_done: true, first_trade_annotation_shown: true })
-    } catch {
-      // non-critical
-    }
+  function handleViewMarcus() {
+    markStep({ madeFirstTrade: true, firstTradeAnnotationShown: true })
     router.replace('/agent/marcus-bull-chen')
   }
 
