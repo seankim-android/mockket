@@ -48,3 +48,43 @@ export function startMorningBriefCron() {
     }
   }, { timezone: 'America/New_York' })
 }
+
+export async function processScheduledJobs() {
+  const { rows } = await db.query(
+    `UPDATE scheduled_jobs SET ran_at = NOW()
+     WHERE ran_at IS NULL AND run_at <= NOW()
+     RETURNING *`
+  )
+
+  for (const job of rows) {
+    try {
+      if (job.job_type === 'marcus_intro') {
+        const { userId } = job.payload as { userId: string }
+
+        // Check if already sent (idempotency guard)
+        const { rows: ftue } = await db.query(
+          `SELECT agent_intro_sent FROM ftue_progress WHERE user_id = $1`,
+          [userId]
+        )
+        if (ftue[0]?.agent_intro_sent) continue
+
+        await sendPushToUser(
+          userId,
+          'Marcus Bull Chen',
+          "Hey — I've been watching your account. First move matters. Let's get to work.",
+        )
+        await db.query(
+          `UPDATE ftue_progress SET agent_intro_sent = TRUE WHERE user_id = $1`,
+          [userId]
+        )
+      }
+    } catch (err) {
+      console.error(`[scheduled-jobs] Failed job ${job.id} (${job.job_type}):`, err)
+    }
+  }
+}
+
+export function startScheduledJobsCron() {
+  // Run every minute
+  cron.schedule('* * * * *', processScheduledJobs)
+}

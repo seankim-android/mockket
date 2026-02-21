@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db/client'
-import { sendPushToUser } from '../lib/fcm'
 
 export const usersRouter = Router()
 
@@ -37,23 +36,12 @@ usersRouter.post('/', requireAuth, async (req, res) => {
     [userId]
   )
 
-  // Schedule Marcus intro push (non-blocking, fires 2 min after account creation)
-  void (async () => {
-    await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000))
-    try {
-      await sendPushToUser(
-        userId,
-        'Marcus Bull Chen',
-        "Hey — I've been watching your account. First move matters. Let's get to work."
-      )
-      await db.query(
-        `UPDATE ftue_progress SET agent_intro_sent = TRUE WHERE user_id = $1`,
-        [userId]
-      )
-    } catch (err) {
-      console.error('[marcus-intro] Failed to send intro push:', err)
-    }
-  })()
+  // Schedule Marcus intro push 2 minutes after account creation
+  await db.query(
+    `INSERT INTO scheduled_jobs (job_type, payload, run_at)
+     VALUES ('marcus_intro', $1, NOW() + INTERVAL '2 minutes')`,
+    [JSON.stringify({ userId })]
+  )
 
   res.json({ ok: true })
 })
