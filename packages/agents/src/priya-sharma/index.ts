@@ -9,6 +9,7 @@ export const priyaSharma: AgentModule = {
   riskLevel: 'low',
   assetClasses: ['stocks'],
   rebalanceInterval: 'daily',
+  watchlist: ['JNJ', 'MSFT', 'AAPL', 'KO', 'PG'],
 
   async rebalance(portfolio: Portfolio, marketData: MarketData): Promise<Trade[]> {
     const trades: Trade[] = []
@@ -42,7 +43,10 @@ export const priyaSharma: AgentModule = {
   },
 
   getRationale(trade: Trade): string {
-    return `P/E came down to an attractive entry point after the pullback, initiated a position in $${trade.ticker}.`
+    if (trade.action === 'sell') {
+      return `$${trade.ticker} ran past fair value — trimming the position and locking in gains at a disciplined price.`
+    }
+    return `$${trade.ticker}'s P/E came down to a level I find attractive — initiated a position at a margin of safety.`
   },
 
   react(userTrade: Trade): string {

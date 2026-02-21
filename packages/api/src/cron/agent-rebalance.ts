@@ -29,8 +29,9 @@ async function runAgentRebalance(agentId: string) {
         [hire.user_id, hire.id]
       )
 
-      const tickers = holdingRows.map((h: any) => h.ticker)
-      const prices = tickers.length > 0 ? await getQuotes(tickers) : []
+      const heldTickers = holdingRows.map((h: { ticker: string }) => h.ticker)
+      const allTickers = [...new Set([...heldTickers, ...agent.watchlist])]
+      const prices = allTickers.length > 0 ? await getQuotes(allTickers) : []
       const priceMap = Object.fromEntries(prices.map(p => [p.ticker, p.mid]))
       const askMap = Object.fromEntries(prices.map(p => [p.ticker, p.ask]))
       const bidMap = Object.fromEntries(prices.map(p => [p.ticker, p.bid]))

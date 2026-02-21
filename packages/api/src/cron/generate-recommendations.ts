@@ -39,11 +39,8 @@ async function generateRecommendations(agentId: string) {
       )
 
       // Fetch current prices for all held tickers + agent watchlist
-      const watchlist = agentId === 'marcus-bull-chen'
-        ? ['NVDA', 'TSLA', 'AMD', 'META', 'AMZN']
-        : ['JNJ', 'MSFT', 'AAPL', 'KO', 'PG']
       const heldTickers = holdingRows.map((h: any) => h.ticker)
-      const allTickers = [...new Set([...heldTickers, ...watchlist])]
+      const allTickers = [...new Set([...heldTickers, ...agent.watchlist])]
 
       const quotes = await getQuotes(allTickers)
       const priceMap = Object.fromEntries(quotes.map(q => [q.ticker, q.mid]))

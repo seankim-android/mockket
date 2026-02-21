@@ -20,6 +20,7 @@ export interface MarketData {
 }
 
 export interface AgentModule extends AgentMeta {
+  watchlist: string[]
   rebalance(portfolio: Portfolio, marketData: MarketData): Promise<Trade[]>
   getRationale(trade: Trade): string
   react(userTrade: Trade): string

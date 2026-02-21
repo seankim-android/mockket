@@ -9,6 +9,7 @@ export const marcusBullChen: AgentModule = {
   riskLevel: 'high',
   assetClasses: ['stocks', 'crypto'],
   rebalanceInterval: 'daily',
+  watchlist: ['NVDA', 'TSLA', 'AMD', 'META', 'AMZN'],
 
   async rebalance(portfolio: Portfolio, marketData: MarketData): Promise<Trade[]> {
     const trades: Trade[] = []
@@ -69,6 +70,9 @@ export const marcusBullChen: AgentModule = {
   },
 
   getRationale(trade: Trade): string {
+    if (trade.action === 'sell') {
+      return `$${trade.ticker} hit my stop-loss threshold — cutting the loss before it compounds. Discipline over ego.`
+    }
     return `Volume spike on $${trade.ticker}, classic breakout setup, went in heavy.`
   },
 
