@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FlatList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Text } from '@/components/primitives'
+import { Text, Screen } from '@/components/primitives'
 import { useLivePrices } from '@/features/markets/hooks/useLivePrices'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
@@ -81,7 +81,7 @@ export default function MarketsScreen() {
   )
 
   return (
-    <View style={styles.container}>
+    <Screen>
       {/* Market status badge */}
       <View style={styles.header}>
         <Text variant="heading">Markets</Text>
@@ -147,7 +147,7 @@ export default function MarketsScreen() {
         }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
-    </View>
+    </Screen>
   )
 }
 
@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: tokens.colors.bg.primary,
-    paddingTop: 60,
   },
   header: {
     flexDirection: 'row',

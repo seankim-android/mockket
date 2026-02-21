@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Text } from '@/components/primitives'
+import { Text, Screen } from '@/components/primitives'
 import { useAgents } from '@/features/agents'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
@@ -33,7 +33,8 @@ export default function AgentsScreen() {
   const hiredIds = new Set(hires.map((h) => h.agent_id))
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
+    <ScrollView contentContainerStyle={styles.content}>
       <Text variant="heading" style={styles.pageTitle}>Agents</Text>
 
       {/* Hired section */}
@@ -91,12 +92,13 @@ export default function AgentsScreen() {
         </TouchableOpacity>
       ))}
     </ScrollView>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.colors.bg.primary },
-  content: { padding: tokens.spacing[4], paddingTop: 60 },
+  content: { padding: tokens.spacing[4] },
   pageTitle: { marginBottom: tokens.spacing[6] },
   sectionTitle: { marginBottom: tokens.spacing[3], textTransform: 'uppercase', letterSpacing: 1 },
   card: {

@@ -1,7 +1,7 @@
 import { ScrollView, TouchableOpacity, View, StyleSheet } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { Text } from '@/components/primitives'
+import { Text, Screen } from '@/components/primitives'
 import { tokens } from '@/design/tokens'
 import { MissionCards } from '@/features/ftue/MissionCards'
 import { useFtue } from '@/features/ftue/useFtue'
@@ -107,7 +107,8 @@ export default function Home() {
   })
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
+    <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text variant="heading">Mockket</Text>
         <MarketStatusBadge />
@@ -179,6 +180,7 @@ export default function Home() {
 
       <LeaderboardPreview />
     </ScrollView>
+    </Screen>
   )
 }
 

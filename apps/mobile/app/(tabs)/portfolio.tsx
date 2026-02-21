@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Text } from '@/components/primitives'
+import { Text, Screen } from '@/components/primitives'
 import { api } from '@/lib/api/client'
 import { supabase } from '@/lib/supabase'
 import { tokens } from '@/design/tokens'
@@ -127,7 +127,8 @@ export default function PortfolioScreen() {
   const agentTrades = trades.filter((t) => !!t.agent_id)
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
+    <ScrollView contentContainerStyle={styles.content}>
       <Text variant="heading" style={styles.pageTitle}>Portfolio</Text>
 
       {/* Tab bar */}
@@ -303,6 +304,7 @@ export default function PortfolioScreen() {
         </>
       )}
     </ScrollView>
+    </Screen>
   )
 }
 
@@ -321,7 +323,7 @@ const rowStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.colors.bg.primary },
-  content: { padding: tokens.spacing[4], paddingTop: 60 },
+  content: { padding: tokens.spacing[4] },
   pageTitle: { marginBottom: tokens.spacing[4] },
   tabs: { flexDirection: 'row', marginBottom: tokens.spacing[4], gap: tokens.spacing[3] },
   tabBtn: { paddingBottom: tokens.spacing[2], borderBottomWidth: 2, borderBottomColor: 'transparent' },

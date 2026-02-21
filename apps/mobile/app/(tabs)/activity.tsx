@@ -1,6 +1,6 @@
 import { FlatList, StyleSheet, View } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
-import { Text } from '@/components/primitives'
+import { Text, Screen } from '@/components/primitives'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
 
@@ -80,17 +80,17 @@ export default function ActivityScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.centered}>
+      <Screen style={styles.centered}>
         <Text variant="body" color="secondary">
           Loading…
         </Text>
-      </View>
+      </Screen>
     )
   }
 
   if (items.length === 0) {
     return (
-      <View style={styles.centered}>
+      <Screen style={styles.centered}>
         <Text variant="body" color="secondary">
           No activity yet.
         </Text>
@@ -101,12 +101,12 @@ export default function ActivityScreen() {
         >
           Hire an agent to see their moves here.
         </Text>
-      </View>
+      </Screen>
     )
   }
 
   return (
-    <View style={styles.container}>
+    <Screen>
       <Text variant="heading" style={styles.title}>
         Activity
       </Text>
@@ -117,19 +117,12 @@ export default function ActivityScreen() {
         ItemSeparatorComponent={Separator}
         contentContainerStyle={styles.list}
       />
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tokens.colors.bg.primary,
-    paddingTop: 60,
-  },
   centered: {
-    flex: 1,
-    backgroundColor: tokens.colors.bg.primary,
     alignItems: 'center',
     justifyContent: 'center',
     padding: tokens.spacing[6],
