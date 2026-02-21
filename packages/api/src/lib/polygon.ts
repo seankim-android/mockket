@@ -39,19 +39,23 @@ export async function getDividends(tickers: string[]): Promise<DividendEvent[]> 
 
 // Fetch upcoming earnings announcement dates
 export async function getEarnings(tickers: string[]): Promise<EarningsEvent[]> {
+  const today = new Date().toISOString().slice(0, 10)
+  const until = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const results: EarningsEvent[] = []
   await Promise.all(
     tickers.map(async (ticker) => {
       try {
-        const { data } = await client.get('/v3/reference/earnings', {
-          params: { ticker, limit: 10 },
+        const { data } = await client.get('/benzinga/v1/earnings', {
+          params: { ticker, 'date.gte': today, 'date.lte': until, limit: 5 },
         })
         if (!Array.isArray(data.results)) return
         for (const e of data.results) {
-          results.push({ ticker, reportDate: e.report_date })
+          if (e.date) results.push({ ticker, reportDate: e.date })
         }
       } catch (err: any) {
-        console.error(`[polygon] getEarnings failed for ${ticker}:`, err.message)
+        if (err.response?.status !== 403) {
+          console.error(`[polygon] getEarnings failed for ${ticker}:`, err.message)
+        }
       }
     })
   )

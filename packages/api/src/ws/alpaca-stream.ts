@@ -1,7 +1,7 @@
 import WebSocket from 'ws'
 import { redis } from '../lib/redis'
 
-const ALPACA_WS_URL = 'wss://stream.data.alpaca.markets/v2/sip'
+const ALPACA_WS_URL = 'wss://stream.data.alpaca.markets/v2/iex'
 
 let alpacaWs: WebSocket | null = null
 let activeTickers: string[] = []
