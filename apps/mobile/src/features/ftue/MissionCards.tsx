@@ -36,6 +36,7 @@ export function MissionCards({ userCreatedAt }: MissionCardsProps) {
       title: "Make your first trade",
       description: "Pick a stock and place your first paper trade.",
       cta: "Go to Markets",
+      // madeFirstTrade is set by first-trade-moment.tsx after trade executes — no markStep here
       action: () => router.push('/(tabs)/markets'),
     },
     {
@@ -43,6 +44,7 @@ export function MissionCards({ userCreatedAt }: MissionCardsProps) {
       title: "Start a challenge",
       description: "Compete against Marcus or a friend for bragging rights.",
       cta: "View Challenges",
+      // startedChallenge is set server-side in POST /challenges — no markStep here
       action: () => router.push('/(tabs)/challenges'),
     },
   ]

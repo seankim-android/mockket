@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Text } from '@/components/primitives'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
+import { useFtue } from '@/features/ftue/useFtue'
 
 export default function TradeConfirmation() {
   const router = useRouter()
@@ -18,11 +19,8 @@ export default function TradeConfirmation() {
   const px = parseFloat(price)
   const total = qty * px
 
-  const { data: ftue } = useQuery({
-    queryKey: ['ftue'],
-    queryFn: () => api.get<{ first_trade_annotation_shown: boolean }>('/ftue'),
-  })
-  const showAnnotation = !ftue?.first_trade_annotation_shown
+  const { progress: ftue } = useFtue()
+  const showAnnotation = !ftue?.firstTradeAnnotationShown
 
   const { data: marketStatus } = useQuery({
     queryKey: ['market-status'],

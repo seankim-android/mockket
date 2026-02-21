@@ -40,6 +40,12 @@ challengesRouter.post('/', requireAuth, async (req, res) => {
       [userId, agentId ?? null, duration, startingBalance, inviteToken, isPublic ?? false]
     )
 
+    // Mark FTUE mission 3 complete — fire-and-forget, non-critical
+    await client.query(
+      `UPDATE ftue_progress SET started_challenge = TRUE WHERE user_id = $1`,
+      [userId]
+    )
+
     await client.query('COMMIT')
     res.json(rows[0])
   } catch (err) {

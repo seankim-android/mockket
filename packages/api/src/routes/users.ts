@@ -105,7 +105,14 @@ usersRouter.get('/ftue', requireAuth, async (_req, res) => {
     [userId]
   )
   const row = rows[0]
-  if (!row) return res.json({})
+  if (!row) return res.json({
+    viewedMarcusProfile: false,
+    madeFirstTrade: false,
+    startedChallenge: false,
+    agentIntroSent: false,
+    firstTradeAnnotationShown: false,
+    day2CardShown: false,
+  })
   res.json({
     viewedMarcusProfile: row.viewed_marcus_profile,
     madeFirstTrade: row.made_first_trade,
@@ -132,11 +139,11 @@ usersRouter.patch('/ftue', requireAuth, async (req, res) => {
   const fields = req.body as Record<string, unknown>
 
   const safeEntries = Object.entries(fields)
-    .filter(([k]) => k in FTUE_FIELD_MAP)
-    .map(([k, v]) => [FTUE_FIELD_MAP[k], v] as [string, unknown])
+    .filter(([k, v]) => k in FTUE_FIELD_MAP && typeof v === 'boolean')
+    .map(([k, v]) => [FTUE_FIELD_MAP[k], v] as [string, boolean])
 
   if (safeEntries.length === 0) {
-    return res.status(400).json({ error: 'No valid fields provided' })
+    return res.status(400).json({ error: 'No valid boolean fields provided' })
   }
 
   const setClauses = safeEntries
