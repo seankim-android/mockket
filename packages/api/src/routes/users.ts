@@ -104,7 +104,16 @@ usersRouter.get('/ftue', requireAuth, async (_req, res) => {
     `SELECT * FROM ftue_progress WHERE user_id = $1`,
     [userId]
   )
-  res.json(rows[0] ?? {})
+  const row = rows[0]
+  if (!row) return res.json({})
+  res.json({
+    viewedMarcusProfile: row.viewed_marcus_profile,
+    madeFirstTrade: row.made_first_trade,
+    startedChallenge: row.started_challenge,
+    agentIntroSent: row.agent_intro_sent,
+    firstTradeAnnotationShown: row.first_trade_annotation_shown,
+    day2CardShown: row.day2_card_shown,
+  })
 })
 
 const ALLOWED_FTUE_FIELDS = new Set([

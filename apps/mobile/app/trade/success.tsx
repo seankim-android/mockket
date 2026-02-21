@@ -22,8 +22,8 @@ export default function TradeSuccess() {
   useEffect(() => {
     async function checkFirstTrade() {
       try {
-        const ftue = await api.get<{ made_first_trade?: boolean }>('/users/ftue')
-        if (!ftue.made_first_trade) {
+        const ftue = await api.get<{ madeFirstTrade?: boolean }>('/users/ftue')
+        if (!ftue.madeFirstTrade) {
           router.replace({
             pathname: '/trade/first-trade-moment',
             params: { ticker, action, quantity, price },
@@ -49,7 +49,7 @@ export default function TradeSuccess() {
         at ${parseFloat(price).toFixed(2)} per share
       </Text>
 
-      {dtCount >= 2 && (
+      {dtCount >= 3 && (
         <View style={styles.pdtBanner}>
           <Text variant="label" style={styles.pdtTitle}>⚠️  PDT Warning</Text>
           <Text variant="caption" style={styles.pdtBody}>
