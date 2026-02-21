@@ -6,6 +6,11 @@ import { Text } from '@/components/primitives'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
 
+const AGENT_COLORS: Record<string, string> = {
+  'marcus-bull-chen': '#F59E0B',
+  'priya-sharma': '#6366F1',
+}
+
 interface AgentDetail {
   id: string
   name: string
@@ -14,6 +19,7 @@ interface AgentDetail {
   riskLevel: string
   assetClasses: string[]
   rebalanceInterval: string
+  winRate?: number
   tradeLog: Array<{
     id: string
     ticker: string
@@ -62,6 +68,15 @@ export default function AgentProfileScreen() {
   })
 
   const currentHire = hires.find((h) => h.agent_id === id)
+  const agentColor = AGENT_COLORS[id as string] ?? tokens.colors.brand.default
+
+  const { mutate: togglePause, isPending: isToggling } = useMutation({
+    mutationFn: () =>
+      currentHire!.is_paused
+        ? api.post(`/agent-hires/${currentHire!.id}/unpause`, {})
+        : api.post(`/agent-hires/${currentHire!.id}/pause`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agent-hires'] }),
+  })
 
   const { mutate: hire, isPending: isHiring } = useMutation({
     mutationFn: (allocatedCash: number) =>
@@ -104,6 +119,13 @@ export default function AgentProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Avatar with color ring */}
+      <View style={styles.avatarWrapper}>
+        <View style={[styles.avatarRing, { borderColor: agentColor, shadowColor: agentColor }]}>
+          <Text style={styles.avatarInitial}>{agent.name[0]}</Text>
+        </View>
+      </View>
+
       {/* Header */}
       <Text variant="heading" style={styles.name}>{agent.name}</Text>
       <Text variant="body" color="secondary" style={styles.strategy}>{agent.strategy}</Text>
@@ -121,6 +143,21 @@ export default function AgentProfileScreen() {
         </View>
       </View>
 
+      {/* Win rate bar */}
+      {agent.winRate !== undefined && (
+        <View style={styles.winRateSection}>
+          <View style={styles.winRateHeader}>
+            <Text variant="caption" color="secondary">Win Rate</Text>
+            <Text variant="label" style={{ color: agentColor }}>
+              {Math.round(agent.winRate * 100)}%
+            </Text>
+          </View>
+          <View style={styles.winRateBar}>
+            <View style={[styles.winRateFill, { width: `${agent.winRate * 100}%` as any, backgroundColor: agentColor }]} />
+          </View>
+        </View>
+      )}
+
       {/* Current hire status */}
       {currentHire && (
         <View style={styles.hireStatus}>
@@ -132,15 +169,26 @@ export default function AgentProfileScreen() {
               ${currentHire.allocated_cash.toLocaleString()} allocated
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.fireBtn}
-            onPress={() => fire()}
-            disabled={isFiring}
-          >
-            <Text variant="caption" style={{ color: tokens.colors.negative }}>
-              {isFiring ? 'Removing...' : 'Remove'}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: tokens.spacing[2] }}>
+            <TouchableOpacity
+              style={styles.pauseBtn}
+              onPress={() => togglePause()}
+              disabled={isToggling}
+            >
+              <Text variant="caption" style={{ color: tokens.colors.warning }}>
+                {currentHire.is_paused ? 'Unpause' : 'Pause'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fireBtn}
+              onPress={() => fire()}
+              disabled={isFiring}
+            >
+              <Text variant="caption" style={{ color: tokens.colors.negative }}>
+                {isFiring ? 'Removing...' : 'Remove'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -274,6 +322,37 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing[3],
   },
   cancelBtn: { padding: tokens.spacing[3], alignItems: 'center' },
+  avatarWrapper: { alignItems: 'center', marginBottom: tokens.spacing[4] },
+  avatarRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colors.bg.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  avatarInitial: { fontSize: 28, fontWeight: '700', color: tokens.colors.text.primary },
+  winRateSection: { marginBottom: tokens.spacing[4] },
+  winRateHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: tokens.spacing[2] },
+  winRateBar: {
+    height: 6,
+    backgroundColor: tokens.colors.bg.tertiary,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  winRateFill: { height: '100%', borderRadius: 3 },
+  pauseBtn: {
+    borderWidth: 1,
+    borderColor: tokens.colors.warning,
+    borderRadius: tokens.radii.md,
+    paddingHorizontal: tokens.spacing[3],
+    paddingVertical: tokens.spacing[2],
+  },
   sectionTitle: {
     marginTop: tokens.spacing[6],
     marginBottom: tokens.spacing[3],
