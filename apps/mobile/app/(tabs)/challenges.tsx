@@ -33,6 +33,10 @@ export default function ChallengesScreen() {
   const [duration, setDuration] = useState<'1w' | '1m'>('1w')
   const [startingBalance, setStartingBalance] = useState('10000')
   const [tab, setTab] = useState<'challenges' | 'leaderboard'>('challenges')
+  const [opponentType, setOpponentType] = useState<'agent' | 'friend'>('agent')
+  const [friendUsername, setFriendUsername] = useState('')
+  const [friendSearchResults, setFriendSearchResults] = useState<Array<{ id: string; display_name: string }>>([])
+  const [selectedFriend, setSelectedFriend] = useState<{ id: string; display_name: string } | null>(null)
 
   const { data: challenges = [], isLoading } = useQuery<Challenge[]>({
     queryKey: ['challenges'],
@@ -45,16 +49,33 @@ export default function ChallengesScreen() {
     enabled: tab === 'leaderboard',
   })
 
+  async function searchFriend() {
+    if (!friendUsername.trim()) return
+    try {
+      const results = await api.get<Array<{ id: string; display_name: string }>>(
+        `/users/search?q=${encodeURIComponent(friendUsername)}`
+      )
+      setFriendSearchResults(results)
+    } catch {
+      setFriendSearchResults([])
+    }
+  }
+
   const { mutate: createChallenge, isPending: isCreating } = useMutation({
     mutationFn: () =>
       api.post('/challenges', {
         duration,
         startingBalance: parseFloat(startingBalance),
-        agentId: 'marcus-bull-chen',
+        agentId: opponentType === 'agent' ? 'marcus-bull-chen' : null,
+        opponentUserId: opponentType === 'friend' ? selectedFriend?.id : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] })
       setShowNew(false)
+      setOpponentType('agent')
+      setFriendUsername('')
+      setFriendSearchResults([])
+      setSelectedFriend(null)
     },
   })
 
@@ -165,7 +186,57 @@ export default function ChallengesScreen() {
           <View style={styles.modalCard}>
             <Text variant="heading" style={{ marginBottom: tokens.spacing[4] }}>New Challenge</Text>
 
-            <Text variant="label" color="secondary" style={{ marginBottom: tokens.spacing[2] }}>Duration</Text>
+            <Text variant="label" color="secondary" style={{ marginBottom: tokens.spacing[2] }}>Challenge</Text>
+            <View style={styles.durationRow}>
+              {(['agent', 'friend'] as const).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.durationBtn, opponentType === t && styles.durationActive]}
+                  onPress={() => setOpponentType(t)}
+                >
+                  <Text variant="label" style={opponentType === t ? { color: '#fff' } : { color: tokens.colors.text.secondary }}>
+                    {t === 'agent' ? 'vs Agent' : 'vs Friend'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {opponentType === 'friend' && (
+              <View style={{ marginTop: tokens.spacing[4] }}>
+                <Text variant="label" color="secondary" style={{ marginBottom: tokens.spacing[2] }}>Friend's username</Text>
+                <View style={{ flexDirection: 'row', gap: tokens.spacing[2] }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    value={friendUsername}
+                    onChangeText={setFriendUsername}
+                    placeholder="Search by username"
+                    placeholderTextColor={tokens.colors.text.muted}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={[styles.durationBtn, { paddingHorizontal: tokens.spacing[3] }]}
+                    onPress={searchFriend}
+                  >
+                    <Text variant="label" color="secondary">Search</Text>
+                  </TouchableOpacity>
+                </View>
+                {friendSearchResults.map((u) => (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={[
+                      styles.card,
+                      { marginTop: tokens.spacing[2], padding: tokens.spacing[3] },
+                      selectedFriend?.id === u.id && { borderColor: tokens.colors.brand.default, borderWidth: 1 },
+                    ]}
+                    onPress={() => setSelectedFriend(u)}
+                  >
+                    <Text variant="label">{u.display_name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <Text variant="label" color="secondary" style={{ marginBottom: tokens.spacing[2], marginTop: tokens.spacing[4] }}>Duration</Text>
             <View style={styles.durationRow}>
               {(['1w', '1m'] as const).map((d) => (
                 <TouchableOpacity
@@ -191,14 +262,10 @@ export default function ChallengesScreen() {
               placeholderTextColor={tokens.colors.text.muted}
             />
 
-            <Text variant="caption" color="secondary" style={{ marginBottom: tokens.spacing[4] }}>
-              Opponent: Marcus Bull Chen (advisory mode)
-            </Text>
-
             <TouchableOpacity
-              style={[styles.newBtn, isCreating && { opacity: 0.6 }]}
+              style={[styles.newBtn, (isCreating || (opponentType === 'friend' && !selectedFriend)) && { opacity: 0.6 }]}
               onPress={() => createChallenge()}
-              disabled={isCreating}
+              disabled={isCreating || (opponentType === 'friend' && !selectedFriend)}
             >
               {isCreating ? <ActivityIndicator color="#fff" /> : <Text variant="label" style={{ color: '#fff' }}>Start Challenge</Text>}
             </TouchableOpacity>
