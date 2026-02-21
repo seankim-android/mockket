@@ -18,6 +18,7 @@ import { startAgentCrons } from './cron/agent-rebalance'
 import { startRecommendationCron } from './cron/generate-recommendations'
 import { startMorningBriefCron, startScheduledJobsCron } from './cron/morning-briefs'
 import { startExpireChallengesCron } from './cron/expire-challenges'
+import { startDividendCron } from './cron/dividend-credits'
 import { startAlpacaStream } from './ws/alpaca-stream'
 import { startWsServer } from './ws/server'
 
@@ -57,6 +58,7 @@ startRecommendationCron()
 startMorningBriefCron()
 startScheduledJobsCron()
 startExpireChallengesCron()
+startDividendCron()
 
 server.listen(PORT, () => {
   console.log(`Mockket API running on port ${PORT}`)

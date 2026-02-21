@@ -1,0 +1,1 @@
+ALTER TABLE dividend_events ADD COLUMN IF NOT EXISTS credited_at TIMESTAMPTZ;
