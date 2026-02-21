@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FlatList, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Text, Screen } from '@/components/primitives'
 import { useLivePrices } from '@/features/markets/hooks/useLivePrices'
+import type { PriceUpdate } from '@/lib/ws/client'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
 
@@ -29,8 +30,8 @@ const TICKERS: TickerInfo[] = [
   { ticker: 'GOOGL', name: 'Alphabet', type: 'stock' },
   { ticker: 'AMZN', name: 'Amazon', type: 'stock' },
   { ticker: 'META', name: 'Meta', type: 'stock' },
-  { ticker: 'BTC-USD', name: 'Bitcoin', type: 'crypto' },
-  { ticker: 'ETH-USD', name: 'Ethereum', type: 'crypto' },
+  // TODO(v2): add crypto tickers once a dedicated price source is wired up.
+  // The Alpaca IEX stream (stocks-only) does not cover crypto.
 ]
 
 // Only stock tickers are queried — Polygon earnings don't cover crypto.
@@ -53,7 +54,26 @@ const STATUS_LABELS: Record<MarketStatus, string> = {
 export default function MarketsScreen() {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const prices = useLivePrices(TICKERS.map((t) => t.ticker))
+  const wsPrice = useLivePrices(TICKERS.map((t) => t.ticker))
+
+  const { data: snapshotData } = useQuery<PriceUpdate[]>({
+    queryKey: ['market-snapshots'],
+    queryFn: () =>
+      api.get<PriceUpdate[]>(
+        `/markets/snapshots?tickers=${STOCK_TICKERS.join(',')}`
+      ),
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+  })
+
+  // Snapshot provides initial/last-known prices; WebSocket updates override them live.
+  const prices = useMemo(() => {
+    const base: Record<string, PriceUpdate> = {}
+    for (const q of snapshotData ?? []) {
+      base[q.ticker] = q
+    }
+    return { ...base, ...wsPrice }
+  }, [snapshotData, wsPrice])
 
   const { data: statusData } = useQuery<{ status: MarketStatus }>({
     queryKey: ['market-status'],
@@ -122,11 +142,6 @@ export default function MarketsScreen() {
                   {hasEarnings && (
                     <View style={styles.earningsBadge}>
                       <Text variant="caption" style={{ color: tokens.colors.warning }}>EARNINGS</Text>
-                    </View>
-                  )}
-                  {item.type === 'crypto' && (
-                    <View style={styles.cryptoBadge}>
-                      <Text variant="caption" style={{ color: tokens.colors.text.muted }}>24/7</Text>
                     </View>
                   )}
                 </View>
@@ -209,12 +224,6 @@ const styles = StyleSheet.create({
   },
   earningsBadge: {
     backgroundColor: '#FBBF2420',
-    borderRadius: tokens.radii.sm,
-    paddingHorizontal: tokens.spacing[1],
-    paddingVertical: 2,
-  },
-  cryptoBadge: {
-    backgroundColor: tokens.colors.bg.tertiary,
     borderRadius: tokens.radii.sm,
     paddingHorizontal: tokens.spacing[1],
     paddingVertical: 2,

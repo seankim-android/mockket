@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getEarnings } from '../lib/polygon'
+import { getQuotes } from '../lib/alpaca'
 
 export const marketsRouter = Router()
 
@@ -44,5 +45,33 @@ marketsRouter.get('/earnings', async (req, res) => {
     res.json(result)
   } catch {
     res.status(500).json({ error: 'Failed to fetch earnings data' })
+  }
+})
+
+// GET /markets/snapshots?tickers=AAPL,MSFT
+// Returns latest bid/ask/mid for stock tickers. Crypto tickers are silently excluded
+// (Alpaca's stock quotes endpoint does not cover crypto).
+marketsRouter.get('/snapshots', async (req, res) => {
+  const raw = req.query.tickers
+  if (!raw || typeof raw !== 'string') {
+    res.status(400).json({ error: 'tickers query param is required' })
+    return
+  }
+
+  const tickers = raw
+    .split(',')
+    .map((t) => t.trim().toUpperCase())
+    .filter((t) => Boolean(t) && !t.includes('-'))  // exclude crypto (e.g. BTC-USD)
+
+  if (tickers.length === 0) {
+    res.json([])
+    return
+  }
+
+  try {
+    const quotes = await getQuotes(tickers)
+    res.json(quotes)
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch snapshots' })
   }
 })
