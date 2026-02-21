@@ -1,10 +1,18 @@
-// Integration tests — run with real Alpaca keys
-// For unit tests, mock the axios calls
+// Integration tests — require real Alpaca credentials (ALPACA_API_KEY, ALPACA_BASE_URL)
+// Skipped automatically when env vars are not set.
+// Run with: ALPACA_API_KEY=... ALPACA_API_SECRET=... ALPACA_BASE_URL=... npx jest alpaca.test
 
-import { getQuote } from '../alpaca'
+const hasCredentials = !!(
+  process.env.ALPACA_API_KEY &&
+  process.env.ALPACA_API_SECRET &&
+  process.env.ALPACA_BASE_URL
+)
 
-describe('getQuote', () => {
+const describeIfCredentials = hasCredentials ? describe : describe.skip
+
+describeIfCredentials('getQuote (integration)', () => {
   it('returns bid, ask, and mid for a valid ticker', async () => {
+    const { getQuote } = await import('../alpaca')
     const quote = await getQuote('AAPL')
     expect(quote.ticker).toBe('AAPL')
     expect(quote.ask).toBeGreaterThan(0)
