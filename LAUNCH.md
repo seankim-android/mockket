@@ -6,8 +6,13 @@ Everything that must be done before the first production release. Work through e
 
 ## 1. Database Migrations
 
-Run all migrations in order against the production Postgres database. All are idempotent (`IF NOT EXISTS` / `ON CONFLICT DO NOTHING`).
+The database is Supabase's managed Postgres. Migrations are plain SQL files run directly against it.
 
+**Get your connection string:** Supabase dashboard → Project Settings → Database → Connection string → URI mode. This is your `DATABASE_URL`.
+
+**Option A — SQL editor (easiest):** Paste each migration file into Supabase dashboard → SQL Editor → New query → Run. Do them in order (008 → 014).
+
+**Option B — psql:**
 ```bash
 psql $DATABASE_URL -f packages/api/src/db/migrations/008_current_prices.sql
 psql $DATABASE_URL -f packages/api/src/db/migrations/009_scheduled_jobs.sql
@@ -17,6 +22,8 @@ psql $DATABASE_URL -f packages/api/src/db/migrations/012_split_events.sql
 psql $DATABASE_URL -f packages/api/src/db/migrations/013_agent_reactions.sql
 psql $DATABASE_URL -f packages/api/src/db/migrations/014_portfolio_reset_receipts.sql
 ```
+
+All migrations are idempotent (`IF NOT EXISTS` / `ON CONFLICT DO NOTHING`) — safe to re-run.
 
 What each adds:
 | Migration | What it adds |
