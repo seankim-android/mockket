@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS current_prices (
+  ticker TEXT PRIMARY KEY,
+  price NUMERIC(18, 6) NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

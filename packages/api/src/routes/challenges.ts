@@ -54,10 +54,11 @@ challengesRouter.post('/', requireAuth, async (req, res) => {
 challengesRouter.get('/leaderboard', async (_req, res) => {
   const { rows } = await db.query(
     `SELECT u.display_name,
-       u.portfolio_cash + COALESCE(SUM(h.quantity * h.avg_cost), 0) AS total_value,
-       ((u.portfolio_cash + COALESCE(SUM(h.quantity * h.avg_cost), 0) - 100000) / 100000 * 100) AS return_pct
+       u.portfolio_cash + COALESCE(SUM(h.quantity * COALESCE(cp.price, h.avg_cost)), 0) AS total_value,
+       ((u.portfolio_cash + COALESCE(SUM(h.quantity * COALESCE(cp.price, h.avg_cost)), 0) - 100000) / 100000 * 100) AS return_pct
      FROM users u
      LEFT JOIN holdings h ON h.user_id = u.id AND h.agent_hire_id IS NULL AND h.challenge_id IS NULL
+     LEFT JOIN current_prices cp ON cp.ticker = h.ticker
      WHERE u.leaderboard_opt_in = TRUE
      GROUP BY u.id, u.display_name, u.portfolio_cash
      ORDER BY return_pct DESC
