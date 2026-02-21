@@ -13,7 +13,7 @@ export default function FirstTradeMoment() {
 
   function handleContinue() {
     markStep({ madeFirstTrade: true, firstTradeAnnotationShown: true })
-    router.replace('/(tabs)/')
+    router.replace('/(tabs)')
   }
 
   function handleViewMarcus() {

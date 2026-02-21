@@ -71,7 +71,7 @@ export default function TradeSuccess() {
 
       <TouchableOpacity
         style={styles.cta}
-        onPress={() => router.replace('/(tabs)/')}
+        onPress={() => router.replace('/(tabs)')}
       >
         <Text variant="label" style={{ color: '#fff' }}>Back to Home</Text>
       </TouchableOpacity>
