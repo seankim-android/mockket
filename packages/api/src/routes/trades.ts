@@ -175,9 +175,22 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
 // GET /trades — trade history for current user
 tradesRouter.get('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
-  const { rows } = await db.query(
-    `SELECT * FROM trades WHERE user_id = $1 ORDER BY executed_at DESC LIMIT 50`,
-    [userId]
-  )
+  const before = req.query.before as string | undefined
+  if (before !== undefined && isNaN(Date.parse(before))) {
+    return res.status(400).json({ error: 'before must be a valid ISO timestamp' })
+  }
+  const limit = 50
+
+  const { rows } = before
+    ? await db.query(
+        `SELECT * FROM trades WHERE user_id = $1 AND executed_at < $2
+         ORDER BY executed_at DESC LIMIT $3`,
+        [userId, before, limit]
+      )
+    : await db.query(
+        `SELECT * FROM trades WHERE user_id = $1
+         ORDER BY executed_at DESC LIMIT $2`,
+        [userId, limit]
+      )
   res.json(rows)
 })
