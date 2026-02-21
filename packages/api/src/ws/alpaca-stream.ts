@@ -10,6 +10,19 @@ const MAX_RECONNECT_DELAY = 60000
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let isConnecting = false
 
+export function stopAlpacaStream() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  if (alpacaWs) {
+    alpacaWs.removeAllListeners()
+    alpacaWs.terminate()
+    alpacaWs = null
+  }
+  isConnecting = false
+}
+
 export function startAlpacaStream(tickers: string[]) {
   activeTickers = tickers
   // Tear down any existing socket before starting fresh
@@ -82,6 +95,10 @@ function connect() {
       }
       if (msg.T === 'error') {
         console.error('[alpaca-ws] stream error from Alpaca:', msg)
+        if (msg.code === 406) {
+          // Connection limit: another instance is still alive. Back off longer.
+          reconnectDelay = 30000
+        }
       }
     }
   })

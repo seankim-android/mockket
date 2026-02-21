@@ -21,7 +21,7 @@ import { startMorningBriefCron, startScheduledJobsCron } from './cron/morning-br
 import { startExpireChallengesCron } from './cron/expire-challenges'
 import { startDividendCron } from './cron/dividend-credits'
 import { startSplitCron } from './cron/split-adjustments'
-import { startAlpacaStream } from './ws/alpaca-stream'
+import { startAlpacaStream, stopAlpacaStream } from './ws/alpaca-stream'
 import { startWsServer } from './ws/server'
 
 dotenv.config()
@@ -94,3 +94,12 @@ startSplitCron()
 server.listen(PORT, () => {
   console.log(`Mockket API running on port ${PORT}`)
 })
+
+function shutdown() {
+  console.log('[server] shutting down, closing Alpaca stream...')
+  stopAlpacaStream()
+  server.close(() => process.exit(0))
+}
+
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
