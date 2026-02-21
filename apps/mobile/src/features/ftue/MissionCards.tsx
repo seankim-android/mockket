@@ -22,24 +22,24 @@ export function MissionCards({ userCreatedAt }: MissionCardsProps) {
     action: () => void
   }> = [
     {
-      done: progress.mission1_agent_viewed,
+      done: progress.viewedMarcusProfile,
       title: "Meet Marcus",
       description: "Check out your AI trading sidekick and see what he's been up to.",
       cta: "View Marcus",
       action: () => {
         router.push('/agent/marcus-bull-chen')
-        markStep({ mission1_agent_viewed: true })
+        markStep({ viewedMarcusProfile: true })
       },
     },
     {
-      done: progress.mission1_trade_done,
+      done: progress.madeFirstTrade,
       title: "Make your first trade",
       description: "Pick a stock and place your first paper trade.",
       cta: "Go to Markets",
       action: () => router.push('/(tabs)/markets'),
     },
     {
-      done: progress.mission1_challenge_done,
+      done: progress.startedChallenge,
       title: "Start a challenge",
       description: "Compete against Marcus or a friend for bragging rights.",
       cta: "View Challenges",
@@ -78,7 +78,7 @@ export function MissionCards({ userCreatedAt }: MissionCardsProps) {
           </Text>
           <TouchableOpacity
             onPress={() => {
-              markStep({ day2_card_shown: true })
+              markStep({ day2CardShown: true })
               router.push('/(tabs)/challenges')
             }}
           >
