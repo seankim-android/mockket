@@ -17,7 +17,10 @@ export default function TradeSuccess() {
       try {
         const ftue = await api.get<{ made_first_trade?: boolean }>('/users/ftue')
         if (!ftue.made_first_trade) {
-          router.replace('/trade/first-trade-moment')
+          router.replace({
+            pathname: '/trade/first-trade-moment',
+            params: { ticker, action, quantity, price },
+          })
         }
       } catch {
         // non-critical
