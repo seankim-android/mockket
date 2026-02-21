@@ -2070,24 +2070,20 @@ const ActivityTab: React.FC = () => (
   </div>
 );
 
-// ─── Dev panel (localhost only) ───────────────────────────────────────────────
+// ─── Dev panel ────────────────────────────────────────────────────────────────
 
-const IS_DEV = typeof window !== "undefined" && window.location.hostname === "localhost";
 const DEV_API = "http://localhost:3000";
 
 const DevPanel: React.FC = () => {
-  const [mode, setMode] = useState<"iex" | "test" | null>(null);
+  const [mode, setMode] = useState<"iex" | "test">("iex");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!IS_DEV) return;
     fetch(`${DEV_API}/dev/sim`)
       .then((r) => r.json())
       .then((d) => setMode(d.mode))
-      .catch(() => setMode("iex"));
+      .catch(() => {/* backend not running — keep default */});
   }, []);
-
-  if (!IS_DEV || mode === null) return null;
 
   const toggle = async () => {
     setBusy(true);
