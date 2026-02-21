@@ -1,6 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Text } from '@/components/primitives'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
@@ -17,11 +18,24 @@ export default function TradeConfirmation() {
   const px = parseFloat(price)
   const total = qty * px
 
+  const { data: ftue } = useQuery({
+    queryKey: ['ftue'],
+    queryFn: () => api.get<{ first_trade_annotation_shown: boolean }>('/ftue'),
+  })
+  const showAnnotation = !ftue?.first_trade_annotation_shown
+
+  const { data: marketStatus } = useQuery({
+    queryKey: ['market-status'],
+    queryFn: () => api.get<{ status: string }>('/market-status'),
+    staleTime: 60_000,
+  })
+  const marketClosed = marketStatus?.status !== 'open'
+
   async function confirm() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.post('/trades', { ticker, action, quantity: qty })
+      const data = await api.post<{ dayTradeCount: number }>('/trades', { ticker, action, quantity: qty })
       router.replace({
         pathname: '/trade/success',
         params: { ticker, action, quantity, price, dayTradeCount: data.dayTradeCount },
@@ -51,6 +65,25 @@ export default function TradeConfirmation() {
           ? 'Fills at the ask price. Price may vary slightly during execution.'
           : 'Fills at the bid price. Price may vary slightly during execution.'}
       </Text>
+
+      {marketClosed && (
+        <View style={styles.marketClosedBanner}>
+          <Text variant="label" style={{ color: tokens.colors.warning }}>Market is closed</Text>
+          <Text variant="caption" color="secondary" style={{ marginTop: tokens.spacing[1] }}>
+            Your order will execute at the next market open.
+          </Text>
+        </View>
+      )}
+
+      {showAnnotation && (
+        <View style={styles.annotation}>
+          <Text variant="caption" color="secondary">
+            {action === 'buy'
+              ? '💡 You buy at the ask — the price sellers will accept. The spread (ask − bid) is the real cost of the trade.'
+              : '💡 You sell at the bid — the highest price buyers will pay right now.'}
+          </Text>
+        </View>
+      )}
 
       {error && <Text variant="caption" style={{ color: tokens.colors.negative, marginBottom: tokens.spacing[3] }}>{error}</Text>}
 
@@ -118,5 +151,21 @@ const styles = StyleSheet.create({
   cancel: {
     padding: tokens.spacing[4],
     alignItems: 'center',
+  },
+  marketClosedBanner: {
+    backgroundColor: '#FBBF2420',
+    borderRadius: tokens.radii.md,
+    borderWidth: 1,
+    borderColor: tokens.colors.warning,
+    padding: tokens.spacing[3],
+    marginBottom: tokens.spacing[3],
+  },
+  annotation: {
+    backgroundColor: tokens.colors.bg.secondary,
+    borderRadius: tokens.radii.md,
+    padding: tokens.spacing[3],
+    marginBottom: tokens.spacing[3],
+    borderLeftWidth: 2,
+    borderLeftColor: tokens.colors.brand.default,
   },
 })
