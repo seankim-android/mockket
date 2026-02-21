@@ -46,20 +46,29 @@ export async function getMarketStatus(): Promise<'open' | 'closed' | 'pre-market
   const { data } = await client.get('/v1/clock')
   if (data.is_open) return 'open'
 
-  const now = Date.now()
-  const nextOpen = new Date(data.next_open).getTime()
-  const nextClose = new Date(data.next_close).getTime()
+  // Get current time in ET
+  const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const hours = nowET.getHours()
+  const minutes = nowET.getMinutes()
+  const timeDecimal = hours + minutes / 60
 
-  // Pre-market: within 5.5 hours before market open (covers 4:00am–9:30am ET extended session)
-  if (now < nextOpen && nextOpen - now <= 5.5 * 60 * 60 * 1000) return 'pre-market'
+  // Check if today is a trading day by seeing if next_open is today
+  const nextOpen = new Date(data.next_open)
+  const nextOpenET = new Date(nextOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const todayET = new Date(nowET)
+  todayET.setHours(0, 0, 0, 0)
+  const nextOpenDay = new Date(nextOpenET)
+  nextOpenDay.setHours(0, 0, 0, 0)
 
-  // After-hours: estimate previous close from next_open and next_close.
-  // next_close - next_open gives the trading day length (typically ~6.5h).
-  // prev_close ≈ next_open - (24h - tradingDayLength) for consecutive business days.
-  // Note: this approximation is inaccurate over weekends (Friday close won't be detected on Sat/Sun).
-  const tradingDayMs = nextClose - nextOpen
-  const estPrevClose = nextOpen - (24 * 60 * 60 * 1000 - tradingDayMs)
-  if (now >= estPrevClose && now - estPrevClose <= 4 * 60 * 60 * 1000) return 'after-hours'
+  const isTradingDay = nextOpenDay.getTime() === todayET.getTime()
+
+  if (!isTradingDay) return 'closed' // weekend or holiday
+
+  // Pre-market: 4:00am–9:30am ET
+  if (timeDecimal >= 4 && timeDecimal < 9.5) return 'pre-market'
+
+  // After-hours: 4:00pm–8:00pm ET
+  if (timeDecimal >= 16 && timeDecimal < 20) return 'after-hours'
 
   return 'closed'
 }

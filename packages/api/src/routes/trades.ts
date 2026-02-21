@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { executeTrade } from '../lib/ledger'
-import { getQuote } from '../lib/alpaca'
+import { getQuote, getMarketStatus } from '../lib/alpaca'
 import { db } from '../db/client'
 import { marcusBullChen, priyaSharma } from '@mockket/agents'
 import { sendPushToUser } from '../lib/fcm'
@@ -21,6 +21,20 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   const TICKER_RE = /^[A-Z0-9]{1,10}$/
   if (!ticker || !['buy', 'sell'].includes(action) || typeof quantity !== 'number' || quantity <= 0 || !TICKER_RE.test(ticker)) {
     return res.status(400).json({ error: 'ticker, action (buy/sell), and quantity (positive number) are required' })
+  }
+
+  // Market hours enforcement
+  let marketStatus: string
+  try {
+    marketStatus = await getMarketStatus()
+  } catch {
+    marketStatus = 'open' // fail open: don't block trades if clock check fails
+  }
+  if (marketStatus === 'closed') {
+    return res.status(422).json({ error: 'Market is closed. Trading is only available during market hours.' })
+  }
+  if (marketStatus === 'pre-market' || marketStatus === 'after-hours') {
+    return res.status(422).json({ error: `Market is currently in ${marketStatus}. Extended hours trading is not supported.` })
   }
 
   let quote
