@@ -167,6 +167,16 @@ usersRouter.post('/fcm-token', requireAuth, async (req, res) => {
 // POST /portfolio/reset — IAP-gated portfolio reset
 usersRouter.post('/portfolio/reset', requireAuth, async (_req, res) => {
   const userId = res.locals.userId
+
+  // IAP gate: user must have purchased a reset via RevenueCat
+  const { rows: userRows } = await db.query(
+    `SELECT is_premium FROM users WHERE id = $1`,
+    [userId]
+  )
+  if (!userRows[0]?.is_premium) {
+    return res.status(402).json({ error: 'Purchase required to reset portfolio' })
+  }
+
   const client = await db.connect()
   try {
     await client.query('BEGIN')
