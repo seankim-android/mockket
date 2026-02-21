@@ -116,7 +116,7 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
           if (!agent) continue
 
           const reaction = agent.react({ ticker, action, quantity, priceAtExecution: price } as any)
-          await sendPushToUser(userId, agent.shortName, reaction, undefined, db)
+          await sendPushToUser(userId, agent.shortName, reaction)
 
           // Record reaction timestamp
           await db.query(

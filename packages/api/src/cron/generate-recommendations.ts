@@ -68,8 +68,7 @@ async function generateRecommendations(agentId: string) {
         hire.user_id,
         `${agent.shortName} has a recommendation`,
         `${action.toUpperCase()} ${ticker} — tap to review`,
-        { url: `https://mockket.app/recommendation/${recId}` },
-        db
+        { url: `https://mockket.app/recommendation/${recId}` }
       )
     } catch (err) {
       console.error(`[recommendations] Failed for hire ${hire.id}:`, err)

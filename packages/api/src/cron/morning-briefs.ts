@@ -31,7 +31,7 @@ async function sendMorningBriefs() {
       const brief = briefs[Math.floor(Math.random() * briefs.length)]
       const agentName = hire.agent_id === 'marcus-bull-chen' ? 'Marcus' : 'Priya'
 
-      await sendPushToUser(hire.user_id, `${agentName} — market open`, brief, undefined, db)
+      await sendPushToUser(hire.user_id, `${agentName} — market open`, brief)
     } catch (err) {
       console.error(`[morning-briefs] Failed for hire ${hire.agent_id}/${hire.user_id}:`, err)
     }

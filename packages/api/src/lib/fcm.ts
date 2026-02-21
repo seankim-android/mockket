@@ -1,25 +1,36 @@
-import axios from 'axios'
+import { initializeApp, getApps, cert } from 'firebase-admin/app'
+import { getMessaging } from 'firebase-admin/messaging'
+import { db } from '../db/client'
 
-const FCM_URL = 'https://fcm.googleapis.com/fcm/send'
+// Initialize once
+if (getApps().length === 0) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT!)
+  initializeApp({ credential: cert(serviceAccount) })
+}
 
-export async function sendPushNotification(token: string, title: string, body: string, data?: Record<string, string>) {
+export async function sendPushNotification(
+  token: string,
+  title: string,
+  body: string,
+  data?: Record<string, string>
+) {
   try {
-    await axios.post(FCM_URL, {
-      to: token,
+    await getMessaging().send({
+      token,
       notification: { title, body },
       data,
-    }, {
-      headers: {
-        Authorization: `key=${process.env.FCM_SERVER_KEY}`,
-      },
     })
   } catch (err) {
     console.error(`[fcm] Failed to send to token ${token.slice(0, 8)}...:`, err)
   }
 }
 
-export async function sendPushToUser(userId: string, title: string, body: string, data?: Record<string, string>, db?: any) {
-  if (!db) return
+export async function sendPushToUser(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, string>
+) {
   const { rows } = await db.query(
     `SELECT token FROM fcm_tokens WHERE user_id = $1`,
     [userId]

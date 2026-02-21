@@ -44,9 +44,7 @@ usersRouter.post('/', requireAuth, async (req, res) => {
       await sendPushToUser(
         userId,
         'Marcus Bull Chen',
-        "Hey — I've been watching your account. First move matters. Let's get to work.",
-        undefined,
-        db
+        "Hey — I've been watching your account. First move matters. Let's get to work."
       )
       await db.query(
         `UPDATE ftue_progress SET agent_intro_sent = TRUE WHERE user_id = $1`,
