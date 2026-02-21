@@ -14,6 +14,7 @@ import { usersRouter } from './routes/users'
 import { agentHiresRouter } from './routes/agent-hires'
 import { activityRouter } from './routes/activity'
 import { marketsRouter } from './routes/markets'
+import { devRouter } from './routes/dev'
 import { startMarketDataCron } from './cron/sync-market-data'
 import { startAgentCrons } from './cron/agent-rebalance'
 import { startRecommendationCron } from './cron/generate-recommendations'
@@ -74,6 +75,11 @@ app.use('/agent-hires', agentHiresRouter)
 app.use('/activity', activityRouter)
 app.use('/markets', marketsRouter)
 
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/dev', devRouter)
+  console.log('[dev] /dev routes enabled')
+}
+
 app.use(errorHandler)
 
 // HTTP + WebSocket server
@@ -97,13 +103,11 @@ server.listen(PORT, () => {
 
 async function shutdown() {
   console.log('[server] shutting down...')
-  // Stop Alpaca stream first so Railway's new instance can claim the connection.
-  stopAlpacaStream()
-  // Close the WebSocket server (drops all client connections, unsubscribes Redis).
-  await wsServer.close()
-  // Give HTTP connections up to 5s to drain, then force-exit.
-  server.close(() => process.exit(0))
+  // Schedule force-exit first so we always exit even if cleanup hangs.
   setTimeout(() => process.exit(0), 5_000).unref()
+  stopAlpacaStream()
+  await wsServer.close()
+  server.close(() => process.exit(0))
 }
 
 process.on('SIGTERM', shutdown)

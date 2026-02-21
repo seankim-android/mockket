@@ -1,7 +1,10 @@
 import WebSocket from 'ws'
 import { redis } from '../lib/redis'
 
-const ALPACA_WS_URL = 'wss://stream.data.alpaca.markets/v2/iex'
+const ALPACA_WS_URL_IEX = 'wss://stream.data.alpaca.markets/v2/iex'
+const ALPACA_WS_URL_TEST = 'wss://stream.data.alpaca.markets/v2/test'
+
+let useTestStream = process.env.USE_ALPACA_TEST_STREAM === 'true'
 
 let alpacaWs: WebSocket | null = null
 let activeTickers: string[] = []
@@ -9,6 +12,18 @@ let reconnectDelay = 5000
 const MAX_RECONNECT_DELAY = 60000
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let isConnecting = false
+
+export function getStreamMode(): 'test' | 'iex' {
+  return useTestStream ? 'test' : 'iex'
+}
+
+export function setTestStream(enabled: boolean) {
+  if (useTestStream === enabled) return
+  useTestStream = enabled
+  console.log(`[alpaca-ws] switching to ${enabled ? 'TEST' : 'IEX'} stream`)
+  // Restart with current tickers (test stream only provides AAPL)
+  startAlpacaStream(activeTickers)
+}
 
 // Per-ticker throttle: skip publishes within 200ms of the last for the same ticker
 const lastPublish = new Map<string, number>()
@@ -64,10 +79,12 @@ export function removeTicker(ticker: string) {
 
 function connect() {
   if (isConnecting) return
+  console.log('[alpaca-ws] connecting...')
   isConnecting = true
   reconnectTimer = null
 
-  alpacaWs = new WebSocket(ALPACA_WS_URL)
+  const wsUrl = useTestStream ? ALPACA_WS_URL_TEST : ALPACA_WS_URL_IEX
+  alpacaWs = new WebSocket(wsUrl)
 
   alpacaWs.on('open', () => {
     isConnecting = false
