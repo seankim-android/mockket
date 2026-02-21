@@ -96,8 +96,10 @@ function connect() {
       if (msg.T === 'error') {
         console.error('[alpaca-ws] stream error from Alpaca:', msg)
         if (msg.code === 406) {
-          // Connection limit: another instance is still alive. Back off longer.
+          // Connection limit: another instance is still alive (e.g. rolling deploy).
+          // Close immediately and back off — the close handler will schedule the retry.
           reconnectDelay = 30000
+          alpacaWs?.terminate()
         }
       }
     }
