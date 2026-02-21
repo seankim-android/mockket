@@ -67,9 +67,9 @@ Alpaca WS ──> Backend WS server ──> Redis pub/sub ──> Backend WS fan
 
 ## Key Architectural Decisions
 
-### 1. Alpaca paper accounts are server-managed
+### 1. Alpaca is a read-only price feed
 
-Users do not create or manage Alpaca accounts. The backend creates paper trading accounts and proxies all trade operations. This simplifies the mobile app (no API key management), enables server-side validation of trades, and lets us enforce product rules (minimum allocation, challenge rules) before forwarding to Alpaca.
+Alpaca is used exclusively for real-time stock prices and WebSocket market data. No trades are submitted to Alpaca and no per-user Alpaca accounts are created. All portfolio state (cash, holdings, P&L) lives in Postgres as a virtual ledger. When a trade executes, the backend fetches the current ask/bid price from Alpaca, records the trade in the `trades` table, and updates `users.portfolio_cash` and the `holdings` table. This keeps the mobile app simple (no API key management) and lets us enforce all product rules server-side.
 
 ### 2. Agent logic is rule-based, not ML
 
@@ -125,6 +125,11 @@ packages/agents     packages/api
 | `DATABASE_URL` | Yes | Postgres connection string (e.g. `postgresql://user:pass@host:5432/mockket`) |
 | `REDIS_URL` | Yes | Redis connection string for caching and pub/sub |
 | `FIREBASE_PROJECT_ID` | Yes | Firebase project ID for auth and push notifications |
-| `FIREBASE_SERVICE_ACCOUNT` | Yes | Firebase service account JSON (or path to JSON file) |
+| `FIREBASE_SERVICE_ACCOUNT` | Yes | Firebase service account JSON as a single-line string (from Firebase console > Project settings > Service accounts) |
 | `APPLE_CLIENT_ID` | Yes | Apple Developer client ID for Sign in with Apple |
+| `REVENUECAT_SECRET_KEY` | Yes | RevenueCat server-side secret for verifying IAP receipts (RevenueCat dashboard > API keys) |
+| `SUPABASE_URL` | Yes | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key — server-side only, never expose to client |
+| `SUPABASE_JWT_SECRET` | Yes | Supabase JWT secret for local token verification (Supabase dashboard > Settings > API) |
+| `POLYGON_API_KEY` | No | Polygon.io API key for dividends, earnings, and stock splits. Features silently skip without it. |
 | `PORT` | No | API server port. Defaults to `3000`. |
