@@ -46,23 +46,32 @@ export async function getMarketStatus(): Promise<'open' | 'closed' | 'pre-market
   const { data } = await client.get('/v1/clock')
   if (data.is_open) return 'open'
 
-  // Get current time in ET
-  const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const hours = nowET.getHours()
-  const minutes = nowET.getMinutes()
+  const now = new Date()
+
+  // Get current time-of-day in ET using spec-compliant Intl.DateTimeFormat
+  const timeParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(now)
+  const hours = Number(timeParts.find(p => p.type === 'hour')?.value ?? 0)
+  const minutes = Number(timeParts.find(p => p.type === 'minute')?.value ?? 0)
   const timeDecimal = hours + minutes / 60
 
-  // Check if today is a trading day by seeing if next_open is today
-  const nextOpen = new Date(data.next_open)
-  const nextOpenET = new Date(nextOpen.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const todayET = new Date(nowET)
-  todayET.setHours(0, 0, 0, 0)
-  const nextOpenDay = new Date(nextOpenET)
-  nextOpenDay.setHours(0, 0, 0, 0)
+  // Get today's date string in ET and next_open's date string in ET
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const todayString = dateFormatter.format(now)
+  const nextOpenString = dateFormatter.format(new Date(data.next_open))
 
-  const isTradingDay = nextOpenDay.getTime() === todayET.getTime()
-
-  if (!isTradingDay) return 'closed' // weekend or holiday
+  // If next_open is not today, market is closed (weekend or holiday)
+  const isTradingDay = todayString === nextOpenString
+  if (!isTradingDay) return 'closed'
 
   // Pre-market: 4:00am–9:30am ET
   if (timeDecimal >= 4 && timeDecimal < 9.5) return 'pre-market'
@@ -70,5 +79,6 @@ export async function getMarketStatus(): Promise<'open' | 'closed' | 'pre-market
   // After-hours: 4:00pm–8:00pm ET
   if (timeDecimal >= 16 && timeDecimal < 20) return 'after-hours'
 
+  // Market closed for the day (e.g. early close, halt, or gap between close and after-hours)
   return 'closed'
 }

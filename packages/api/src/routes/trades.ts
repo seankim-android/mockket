@@ -24,7 +24,7 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   }
 
   // Market hours enforcement
-  let marketStatus: string
+  let marketStatus: 'open' | 'closed' | 'pre-market' | 'after-hours'
   try {
     marketStatus = await getMarketStatus()
   } catch {
