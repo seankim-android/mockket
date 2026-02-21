@@ -105,7 +105,14 @@ usersRouter.get('/ftue', requireAuth, async (_req, res) => {
     [userId]
   )
   const row = rows[0]
-  if (!row) return res.json({})
+  if (!row) return res.json({
+    viewedMarcusProfile: false,
+    madeFirstTrade: false,
+    startedChallenge: false,
+    agentIntroSent: false,
+    firstTradeAnnotationShown: false,
+    day2CardShown: false,
+  })
   res.json({
     viewedMarcusProfile: row.viewed_marcus_profile,
     madeFirstTrade: row.made_first_trade,
@@ -116,24 +123,31 @@ usersRouter.get('/ftue', requireAuth, async (_req, res) => {
   })
 })
 
-const ALLOWED_FTUE_FIELDS = new Set([
-  'viewed_marcus_profile', 'made_first_trade', 'started_challenge',
-  'agent_intro_sent', 'first_trade_annotation_shown', 'day2_card_shown'
-])
+// Maps camelCase client keys → snake_case DB column names
+const FTUE_FIELD_MAP: Record<string, string> = {
+  viewedMarcusProfile: 'viewed_marcus_profile',
+  madeFirstTrade: 'made_first_trade',
+  startedChallenge: 'started_challenge',
+  agentIntroSent: 'agent_intro_sent',
+  firstTradeAnnotationShown: 'first_trade_annotation_shown',
+  day2CardShown: 'day2_card_shown',
+}
 
 // PATCH /users/ftue — update FTUE progress
 usersRouter.patch('/ftue', requireAuth, async (req, res) => {
   const userId = res.locals.userId
   const fields = req.body as Record<string, unknown>
 
-  const safeEntries = Object.entries(fields).filter(([k]) => ALLOWED_FTUE_FIELDS.has(k))
+  const safeEntries = Object.entries(fields)
+    .filter(([k, v]) => k in FTUE_FIELD_MAP && typeof v === 'boolean')
+    .map(([k, v]) => [FTUE_FIELD_MAP[k], v] as [string, boolean])
 
   if (safeEntries.length === 0) {
-    return res.status(400).json({ error: 'No valid fields provided' })
+    return res.status(400).json({ error: 'No valid boolean fields provided' })
   }
 
   const setClauses = safeEntries
-    .map(([k], i) => `${k} = $${i + 2}`)
+    .map(([col], i) => `${col} = $${i + 2}`)
     .join(', ')
 
   await db.query(

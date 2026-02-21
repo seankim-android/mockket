@@ -2,12 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 
 export interface FtueProgress {
-  mission1_agent_viewed: boolean    // card 1: viewed Marcus profile
-  mission1_trade_done: boolean      // card 2: first trade complete
-  mission1_challenge_done: boolean  // card 3: first challenge created
-  first_trade_annotation_shown: boolean
-  agent_intro_shown: boolean
-  day2_card_shown: boolean
+  viewedMarcusProfile: boolean
+  madeFirstTrade: boolean
+  startedChallenge: boolean
+  firstTradeAnnotationShown: boolean
+  agentIntroSent: boolean
+  day2CardShown: boolean
 }
 
 export function useFtue() {
@@ -15,12 +15,12 @@ export function useFtue() {
 
   const { data: progress, isLoading } = useQuery<FtueProgress>({
     queryKey: ['ftue'],
-    queryFn: () => api.get<FtueProgress>('/ftue'),
+    queryFn: () => api.get<FtueProgress>('/users/ftue'),
     staleTime: 60_000,
   })
 
   const { mutate: markStep } = useMutation({
-    mutationFn: (patch: Partial<FtueProgress>) => api.patch('/ftue', patch),
+    mutationFn: (patch: Partial<FtueProgress>) => api.patch('/users/ftue', patch),
     onMutate: async (patch) => {
       await queryClient.cancelQueries({ queryKey: ['ftue'] })
       const prev = queryClient.getQueryData<FtueProgress>(['ftue'])
@@ -36,14 +36,14 @@ export function useFtue() {
   })
 
   const allMissionsComplete = progress
-    ? progress.mission1_agent_viewed &&
-      progress.mission1_trade_done &&
-      progress.mission1_challenge_done
+    ? progress.viewedMarcusProfile &&
+      progress.madeFirstTrade &&
+      progress.startedChallenge
     : false
 
   // Day 2: user created account yesterday or earlier and no challenge yet
   function shouldShowDay2Card(createdAt?: string): boolean {
-    if (!createdAt || progress?.day2_card_shown || progress?.mission1_challenge_done) return false
+    if (!createdAt || progress?.day2CardShown || progress?.startedChallenge) return false
     const created = new Date(createdAt)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
