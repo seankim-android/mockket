@@ -7,9 +7,22 @@ let alpacaWs: WebSocket | null = null
 let activeTickers: string[] = []
 let reconnectDelay = 5000
 const MAX_RECONNECT_DELAY = 60000
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let isConnecting = false
 
 export function startAlpacaStream(tickers: string[]) {
   activeTickers = tickers
+  // Tear down any existing socket before starting fresh
+  if (alpacaWs && alpacaWs.readyState !== WebSocket.CLOSED) {
+    alpacaWs.removeAllListeners()
+    alpacaWs.terminate()
+    alpacaWs = null
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  isConnecting = false
   connect()
 }
 
@@ -23,9 +36,14 @@ export function addTicker(ticker: string) {
 }
 
 function connect() {
+  if (isConnecting) return
+  isConnecting = true
+  reconnectTimer = null
+
   alpacaWs = new WebSocket(ALPACA_WS_URL)
 
   alpacaWs.on('open', () => {
+    isConnecting = false
     reconnectDelay = 5000 // reset on successful connect
     alpacaWs!.send(JSON.stringify({
       action: 'auth',
@@ -69,8 +87,9 @@ function connect() {
   })
 
   alpacaWs.on('close', () => {
+    isConnecting = false
     console.log(`[alpaca-ws] disconnected, reconnecting in ${reconnectDelay}ms...`)
-    setTimeout(connect, reconnectDelay)
+    reconnectTimer = setTimeout(connect, reconnectDelay)
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY)
   })
 
