@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as WebBrowser from 'expo-web-browser'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useAuthStore } from '@/features/auth/store'
-import { supabase } from '@/lib/supabase'
+import { supabase, processedOAuthCodes } from '@/lib/supabase'
 
 // Required for WebBrowser.openAuthSessionAsync to close the browser after OAuth redirect
 WebBrowser.maybeCompleteAuthSession()
@@ -31,7 +31,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
   const router = useRouter()
   const inAuthGroup = segments[0] === '(auth)'
-  const [forceUpdate, setForceUpdate] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (isLoading) return
@@ -44,23 +44,25 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [session, isLoading, inAuthGroup, router])
 
   useEffect(() => {
-    if (!session) return
+    if (!session) {
+      setForceUpdate(null)
+      return
+    }
     async function checkVersion() {
       try {
         const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000'}/config/app-version`)
+        if (!res.ok) { setForceUpdate(false); return }
         const config = await res.json()
         const platform = Platform.OS === 'ios' ? config.ios : config.android
-        if (platform?.updateMode === 'hard') {
-          setForceUpdate(true)
-        }
+        setForceUpdate(platform?.updateMode === 'hard')
       } catch {
-        // ignore — don't block launch on version check failure
+        setForceUpdate(false) // don't block launch on version check failure
       }
     }
     checkVersion()
   }, [session])
 
-  if (isLoading) return null
+  if (isLoading || (session && forceUpdate === null)) return null
 
   if (forceUpdate) {
     return (
@@ -93,21 +95,31 @@ const fuStyles = StyleSheet.create({
 })
 
 function useOAuthDeepLink() {
+  const router = useRouter()
+
   useEffect(() => {
     async function handleUrl(url: string) {
-      if (url.includes('auth/callback')) {
-        await supabase.auth.exchangeCodeForSession(url)
-      }
+      if (!url.includes('auth/callback')) return
+      const code = new URL(url).searchParams.get('code')
+      if (!code || processedOAuthCodes.has(code)) return
+      processedOAuthCodes.add(code)
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) router.replace('/(auth)/sign-in')
     }
 
     // App already open — catch the deep link
     const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url))
 
-    // App cold-started from a deep link
-    Linking.getInitialURL().then((url) => { if (url) handleUrl(url) })
+    // App cold-started from a deep link — wait for Supabase to finish
+    // rehydrating from secure store before processing the URL
+    Linking.getInitialURL().then(async (url) => {
+      if (!url) return
+      await supabase.auth.getSession()
+      handleUrl(url)
+    })
 
     return () => sub.remove()
-  }, [])
+  }, [router])
 }
 
 export default function RootLayout() {

@@ -11,13 +11,14 @@ import {
 import { useRouter } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { Text } from '@/components/primitives'
-import { supabase } from '@/lib/supabase'
+import { supabase, processedOAuthCodes } from '@/lib/supabase'
 import { tokens } from '@/design/tokens'
 
 export default function SignUp() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -40,15 +41,23 @@ export default function SignUp() {
       setOauthLoading(null)
       return
     }
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
-    if (result.type === 'success') {
-      const { error: sessionErr } = await supabase.auth.exchangeCodeForSession(result.url)
-      if (sessionErr) setError(sessionErr.message)
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
+      if (result.type === 'success') {
+        const code = new URL(result.url).searchParams.get('code')
+        if (code && !processedOAuthCodes.has(code)) {
+          processedOAuthCodes.add(code)
+          const { error: sessionErr } = await supabase.auth.exchangeCodeForSession(code)
+          if (sessionErr) setError(sessionErr.message)
+        }
+      }
+    } finally {
+      setOauthLoading(null)
     }
-    setOauthLoading(null)
   }
 
   async function handleSignUp() {
+    setError(null)
     const trimmedEmail = email.trim()
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError('Please enter a valid email address.')
@@ -58,8 +67,11 @@ export default function SignUp() {
       setError('Password must be at least 8 characters.')
       return
     }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
     setLoading(true)
-    setError(null)
     const { error: err } = await supabase.auth.signUp({ email: trimmedEmail, password })
     setLoading(false)
     if (err) {
@@ -101,6 +113,15 @@ export default function SignUp() {
         onChangeText={setPassword}
         secureTextEntry
         accessibilityLabel="Password"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Confirm Password"
+        placeholderTextColor={tokens.colors.text.muted}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+        accessibilityLabel="Confirm password"
       />
 
       {error && (

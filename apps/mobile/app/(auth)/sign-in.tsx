@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { Text } from '@/components/primitives'
-import { supabase } from '@/lib/supabase'
+import { supabase, processedOAuthCodes } from '@/lib/supabase'
 import { tokens } from '@/design/tokens'
 
 export default function SignIn() {
@@ -28,6 +28,7 @@ export default function SignIn() {
   }, [])
 
   async function handleSignIn() {
+    setError(null)
     const trimmedEmail = email.trim()
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError('Please enter a valid email address.')
@@ -38,7 +39,6 @@ export default function SignIn() {
       return
     }
     setLoading(true)
-    setError(null)
     const { error: err } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password })
     setLoading(false)
     if (err) setError(err.message)
@@ -58,12 +58,19 @@ export default function SignIn() {
       setOauthLoading(null)
       return
     }
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
-    if (result.type === 'success') {
-      const { error: sessionErr } = await supabase.auth.exchangeCodeForSession(result.url)
-      if (sessionErr) setError(sessionErr.message)
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
+      if (result.type === 'success') {
+        const code = new URL(result.url).searchParams.get('code')
+        if (code && !processedOAuthCodes.has(code)) {
+          processedOAuthCodes.add(code)
+          const { error: sessionErr } = await supabase.auth.exchangeCodeForSession(code)
+          if (sessionErr) setError(sessionErr.message)
+        }
+      }
+    } finally {
+      setOauthLoading(null)
     }
-    setOauthLoading(null)
   }
 
   const anyLoading = loading || oauthLoading !== null
