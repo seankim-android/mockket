@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { executeTrade } from '../lib/ledger'
-import { getQuote } from '../lib/alpaca'
+import { getQuote, getMarketStatus } from '../lib/alpaca'
 import { db } from '../db/client'
 import { marcusBullChen, priyaSharma } from '@mockket/agents'
 import { sendPushToUser } from '../lib/fcm'
@@ -23,6 +23,34 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'ticker, action (buy/sell), and quantity (positive number) are required' })
   }
 
+  // Market hours enforcement
+  let marketStatus: 'open' | 'closed' | 'pre-market' | 'after-hours'
+  try {
+    marketStatus = await getMarketStatus()
+  } catch {
+    marketStatus = 'open' // fail open: don't block trades if clock check fails
+  }
+  if (marketStatus === 'closed') {
+    return res.status(422).json({ error: 'Market is closed. Trading is only available during market hours.' })
+  }
+  if (marketStatus === 'pre-market' || marketStatus === 'after-hours') {
+    return res.status(422).json({ error: `Market is currently in ${marketStatus}. Extended hours trading is not supported.` })
+  }
+
+  // Validate challengeId ownership and status
+  if (challengeId) {
+    const { rows: challengeRows } = await db.query(
+      `SELECT id FROM challenges
+       WHERE id = $1
+         AND (user_id = $2 OR opponent_user_id = $2)
+         AND status = 'active'`,
+      [challengeId, userId]
+    )
+    if (challengeRows.length === 0) {
+      return res.status(403).json({ error: 'Challenge not found or not active' })
+    }
+  }
+
   let quote
   try {
     quote = await getQuote(ticker)
@@ -33,9 +61,20 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   // Buy at ask, sell at bid
   const price = action === 'buy' ? quote.ask : quote.bid
 
-  await executeTrade({ userId, ticker, action, quantity, price, challengeId, agentHireId })
+  try {
+    await executeTrade({ userId, ticker, action, quantity, price, challengeId, agentHireId })
+  } catch (err: any) {
+    if (err.message === 'Insufficient cash') {
+      return res.status(400).json({ error: 'Insufficient cash to execute this trade' })
+    }
+    if (err.message === 'Insufficient holding quantity') {
+      return res.status(400).json({ error: 'Insufficient shares to sell' })
+    }
+    throw err
+  }
 
-  // PDT day trade tracking — only insert when a round-trip occurs on the same calendar day
+  // PDT day trade tracking — only runs if trade succeeded
+  // only insert when a round-trip occurs on the same calendar day
   const oppositeAction = action === 'buy' ? 'sell' : 'buy'
   const { rows: oppRows } = await db.query(
     `SELECT id FROM trades
@@ -116,7 +155,7 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
           if (!agent) continue
 
           const reaction = agent.react({ ticker, action, quantity, priceAtExecution: price } as any)
-          await sendPushToUser(userId, agent.shortName, reaction, undefined, db)
+          await sendPushToUser(userId, agent.shortName, reaction)
 
           // Record reaction timestamp
           await db.query(
@@ -136,9 +175,22 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
 // GET /trades — trade history for current user
 tradesRouter.get('/', requireAuth, async (req, res) => {
   const userId = res.locals.userId
-  const { rows } = await db.query(
-    `SELECT * FROM trades WHERE user_id = $1 ORDER BY executed_at DESC LIMIT 50`,
-    [userId]
-  )
+  const before = req.query.before as string | undefined
+  if (before !== undefined && isNaN(Date.parse(before))) {
+    return res.status(400).json({ error: 'before must be a valid ISO timestamp' })
+  }
+  const limit = 50
+
+  const { rows } = before
+    ? await db.query(
+        `SELECT * FROM trades WHERE user_id = $1 AND executed_at < $2
+         ORDER BY executed_at DESC LIMIT $3`,
+        [userId, before, limit]
+      )
+    : await db.query(
+        `SELECT * FROM trades WHERE user_id = $1
+         ORDER BY executed_at DESC LIMIT $2`,
+        [userId, limit]
+      )
   res.json(rows)
 })

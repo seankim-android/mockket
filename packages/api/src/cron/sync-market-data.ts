@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import { db } from '../db/client'
-import { getDividends, getEarnings } from '../lib/polygon'
+import { getQuotes } from '../lib/alpaca'
+import { getDividends, getEarnings, getSplits } from '../lib/polygon'
 
 // TODO: In production, derive from all active user holdings in DB
 // e.g. SELECT DISTINCT ticker FROM trades WHERE executed_at > NOW() - INTERVAL '3 months'
@@ -39,6 +40,34 @@ export async function syncMarketData() {
       } catch (err: any) {
         console.error(`[cron] failed to upsert earnings for ${e.ticker}:`, err.message)
       }
+    }
+
+    const splits = await getSplits(TRACKED_TICKERS)
+    for (const s of splits) {
+      try {
+        await db.query(
+          `INSERT INTO split_events (ticker, effective_date, ratio)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (ticker, effective_date) DO NOTHING`,
+          [s.ticker, s.effectiveDate, s.ratio]
+        )
+      } catch (err: any) {
+        console.error(`[cron] failed to upsert split for ${s.ticker}:`, err.message)
+      }
+    }
+
+    // Refresh current prices for all tracked tickers
+    try {
+      const quotes = await getQuotes(TRACKED_TICKERS)
+      for (const q of quotes) {
+        await db.query(
+          `INSERT INTO current_prices (ticker, price, updated_at) VALUES ($1, $2, NOW())
+           ON CONFLICT (ticker) DO UPDATE SET price = $2, updated_at = NOW()`,
+          [q.ticker, q.bid]
+        )
+      }
+    } catch (err: any) {
+      console.error('[cron] failed to refresh current_prices:', err.message)
     }
 
     console.log(`[cron] synced ${dividends.length} dividends, ${earnings.length} earnings events`)

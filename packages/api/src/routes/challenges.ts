@@ -52,18 +52,23 @@ challengesRouter.post('/', requireAuth, async (req, res) => {
 
 // GET /challenges/leaderboard — top 50 by all-time return
 challengesRouter.get('/leaderboard', async (_req, res) => {
-  const { rows } = await db.query(
-    `SELECT u.display_name,
-       u.portfolio_cash + COALESCE(SUM(h.quantity * h.avg_cost), 0) AS total_value,
-       ((u.portfolio_cash + COALESCE(SUM(h.quantity * h.avg_cost), 0) - 100000) / 100000 * 100) AS return_pct
-     FROM users u
-     LEFT JOIN holdings h ON h.user_id = u.id AND h.agent_hire_id IS NULL AND h.challenge_id IS NULL
-     WHERE u.leaderboard_opt_in = TRUE
-     GROUP BY u.id, u.display_name, u.portfolio_cash
-     ORDER BY return_pct DESC
-     LIMIT 50`
-  )
-  res.json(rows)
+  try {
+    const { rows } = await db.query(
+      `SELECT u.display_name,
+         u.portfolio_cash + COALESCE(SUM(h.quantity * COALESCE(cp.price, h.avg_cost)), 0) AS total_value,
+         ((u.portfolio_cash + COALESCE(SUM(h.quantity * COALESCE(cp.price, h.avg_cost)), 0) - 100000) / 100000 * 100) AS return_pct
+       FROM users u
+       LEFT JOIN holdings h ON h.user_id = u.id AND h.agent_hire_id IS NULL AND h.challenge_id IS NULL
+       LEFT JOIN current_prices cp ON cp.ticker = h.ticker
+       WHERE u.leaderboard_opt_in = TRUE
+       GROUP BY u.id, u.display_name, u.portfolio_cash
+       ORDER BY return_pct DESC
+       LIMIT 50`
+    )
+    res.json(rows)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load leaderboard' })
+  }
 })
 
 // GET /challenges/invite/:token — resolve invite token (no auth required)
@@ -163,13 +168,35 @@ challengesRouter.get('/', requireAuth, async (req, res) => {
   res.json(rows)
 })
 
-// GET /challenges/:id — single challenge detail
+// GET /challenges/:id — single challenge detail with computed P&L
 challengesRouter.get('/:id', requireAuth, async (req, res) => {
   const userId = res.locals.userId
-  const { rows } = await db.query(
-    `SELECT * FROM challenges WHERE id = $1 AND (user_id = $2 OR opponent_user_id = $2)`,
-    [req.params.id, userId]
-  )
-  if (!rows[0]) return res.status(404).json({ error: 'Not found' })
-  res.json(rows[0])
+  try {
+    const { rows } = await db.query(
+      `SELECT c.*,
+         c.challenge_cash + COALESCE(
+           (SELECT SUM(h.quantity * COALESCE(cp.price, h.avg_cost))
+            FROM holdings h
+            LEFT JOIN current_prices cp ON cp.ticker = h.ticker
+            WHERE h.user_id = $2 AND h.challenge_id = c.id),
+           0
+         ) AS final_value,
+         CASE WHEN c.starting_balance > 0 THEN
+           ((c.challenge_cash + COALESCE(
+             (SELECT SUM(h.quantity * COALESCE(cp.price, h.avg_cost))
+              FROM holdings h
+              LEFT JOIN current_prices cp ON cp.ticker = h.ticker
+              WHERE h.user_id = $2 AND h.challenge_id = c.id),
+             0
+           ) - c.starting_balance) / c.starting_balance * 100)
+         ELSE 0 END AS return_pct
+       FROM challenges c
+       WHERE c.id = $1 AND (c.user_id = $2 OR c.opponent_user_id = $2)`,
+      [req.params.id, userId]
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' })
+    res.json(rows[0])
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch challenge' })
+  }
 })

@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db/client'
-import { sendPushToUser } from '../lib/fcm'
 
 export const usersRouter = Router()
 
@@ -37,25 +36,12 @@ usersRouter.post('/', requireAuth, async (req, res) => {
     [userId]
   )
 
-  // Schedule Marcus intro push (non-blocking, fires 2 min after account creation)
-  void (async () => {
-    await new Promise(resolve => setTimeout(resolve, 2 * 60 * 1000))
-    try {
-      await sendPushToUser(
-        userId,
-        'Marcus Bull Chen',
-        "Hey — I've been watching your account. First move matters. Let's get to work.",
-        undefined,
-        db
-      )
-      await db.query(
-        `UPDATE ftue_progress SET agent_intro_sent = TRUE WHERE user_id = $1`,
-        [userId]
-      )
-    } catch (err) {
-      console.error('[marcus-intro] Failed to send intro push:', err)
-    }
-  })()
+  // Schedule Marcus intro push 2 minutes after account creation
+  await db.query(
+    `INSERT INTO scheduled_jobs (job_type, payload, run_at)
+     VALUES ('marcus_intro', $1, NOW() + INTERVAL '2 minutes')`,
+    [JSON.stringify({ userId })]
+  )
 
   res.json({ ok: true })
 })
@@ -169,9 +155,20 @@ usersRouter.post('/fcm-token', requireAuth, async (req, res) => {
 // POST /portfolio/reset — IAP-gated portfolio reset
 usersRouter.post('/portfolio/reset', requireAuth, async (_req, res) => {
   const userId = res.locals.userId
+
   const client = await db.connect()
   try {
     await client.query('BEGIN')
+
+    // IAP gate inside transaction to prevent TOCTOU race with RevenueCat webhook
+    const { rows: userRows } = await client.query(
+      `SELECT is_premium FROM users WHERE id = $1`,
+      [userId]
+    )
+    if (!userRows[0]?.is_premium) {
+      await client.query('ROLLBACK')
+      return res.status(402).json({ error: 'Purchase required to reset portfolio' })
+    }
 
     // Block if any active challenge — checked inside transaction to prevent TOCTOU
     const { rows: activeChallenges } = await client.query(

@@ -9,6 +9,7 @@ export const marcusBullChen: AgentModule = {
   riskLevel: 'high',
   assetClasses: ['stocks', 'crypto'],
   rebalanceInterval: 'daily',
+  watchlist: ['NVDA', 'TSLA', 'AMD', 'META', 'AMZN'],
 
   async rebalance(portfolio: Portfolio, marketData: MarketData): Promise<Trade[]> {
     const trades: Trade[] = []
@@ -28,7 +29,7 @@ export const marcusBullChen: AgentModule = {
           ticker: holding.ticker,
           action: 'sell',
           quantity: holding.quantity,
-          priceAtExecution: currentPrice,
+          priceAtExecution: marketData.bid[holding.ticker] ?? currentPrice,
           rationale: `$${holding.ticker} down ${(lossPercent * 100).toFixed(1)}% from cost basis — cutting the loser, rotating capital.`,
           challengeId: null,
           executedAt: new Date().toISOString(),
@@ -44,9 +45,10 @@ export const marcusBullChen: AgentModule = {
       if (!price) continue
       const alreadyHeld = portfolio.holdings.some(h => h.ticker === ticker)
       if (alreadyHeld) continue
+      const askPrice = marketData.ask[ticker] ?? price
       const allocation = Math.min(totalValue * 0.10, portfolio.cash)
       if (allocation < 1000) continue
-      const quantity = Math.floor(allocation / price)
+      const quantity = Math.floor(allocation / askPrice)
       if (quantity < 1) continue
 
       trades.push({
@@ -56,7 +58,7 @@ export const marcusBullChen: AgentModule = {
         ticker,
         action: 'buy',
         quantity,
-        priceAtExecution: price,
+        priceAtExecution: askPrice,
         rationale: `Volume spike on $${ticker}, classic breakout setup, went in heavy.`,
         challengeId: null,
         executedAt: new Date().toISOString(),
@@ -68,6 +70,9 @@ export const marcusBullChen: AgentModule = {
   },
 
   getRationale(trade: Trade): string {
+    if (trade.action === 'sell') {
+      return `$${trade.ticker} hit my stop-loss threshold — cutting the loss before it compounds. Discipline over ego.`
+    }
     return `Volume spike on $${trade.ticker}, classic breakout setup, went in heavy.`
   },
 

@@ -21,4 +21,13 @@ export const queryKeys = {
 
   // Recommendations
   recommendations: (userId: string) => ['recommendations', userId] as const,
+
+  // Earnings
+  earnings: (tickers: string[]) => ['earnings', tickers.sort().join(',')] as const,
+
+  // Config
+  config: () => ['config'] as const,
+
+  // Leaderboard
+  leaderboard: () => ['leaderboard'] as const,
 } as const

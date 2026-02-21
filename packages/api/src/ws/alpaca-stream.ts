@@ -13,6 +13,15 @@ export function startAlpacaStream(tickers: string[]) {
   connect()
 }
 
+// Dynamically add a ticker to the live Alpaca subscription
+export function addTicker(ticker: string) {
+  if (activeTickers.includes(ticker)) return
+  activeTickers.push(ticker)
+  if (alpacaWs?.readyState === WebSocket.OPEN) {
+    alpacaWs.send(JSON.stringify({ action: 'subscribe', quotes: [ticker] }))
+  }
+}
+
 function connect() {
   alpacaWs = new WebSocket(ALPACA_WS_URL)
 

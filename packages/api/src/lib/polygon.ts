@@ -57,3 +57,31 @@ export async function getEarnings(tickers: string[]): Promise<EarningsEvent[]> {
   )
   return results
 }
+
+export interface SplitEvent {
+  ticker: string
+  effectiveDate: string  // ISO date string
+  ratio: number          // new_shares / old_shares
+}
+
+export async function getSplits(tickers: string[]): Promise<SplitEvent[]> {
+  const results: SplitEvent[] = []
+  await Promise.all(
+    tickers.map(async (ticker) => {
+      try {
+        const { data } = await client.get('/v3/reference/splits', {
+          params: { ticker, limit: 10 },
+        })
+        if (!Array.isArray(data.results)) return
+        for (const s of data.results) {
+          const ratio = s.split_to / s.split_from
+          if (ratio <= 0) continue
+          results.push({ ticker: s.ticker, effectiveDate: s.execution_date, ratio })
+        }
+      } catch (err: any) {
+        console.error(`[polygon] getSplits failed for ${ticker}:`, err.message)
+      }
+    })
+  )
+  return results
+}

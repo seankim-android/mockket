@@ -14,6 +14,8 @@ interface Challenge {
   status: string
   winner_id: string | null
   is_forfeited: boolean
+  final_value: number | null
+  return_pct: number | null
 }
 
 export default function Recap() {
@@ -54,6 +56,16 @@ export default function Recap() {
 
       <View style={styles.card}>
         <Row label="Starting balance" value={`$${challenge.starting_balance.toLocaleString()}`} />
+        {challenge.final_value != null && (
+          <Row label="Final value" value={`$${challenge.final_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        )}
+        {challenge.return_pct != null && (
+          <Row
+            label="Return"
+            value={`${challenge.return_pct >= 0 ? '+' : ''}${Number(challenge.return_pct).toFixed(2)}%`}
+            valueColor={challenge.return_pct >= 0 ? tokens.colors.positive : tokens.colors.negative}
+          />
+        )}
         <Row label="Status" value={challenge.status} />
       </View>
 
@@ -72,11 +84,11 @@ export default function Recap() {
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: tokens.spacing[2] }}>
       <Text variant="caption" color="secondary">{label}</Text>
-      <Text variant="caption">{value}</Text>
+      <Text variant="caption" style={valueColor ? { color: valueColor } : undefined}>{value}</Text>
     </View>
   )
 }

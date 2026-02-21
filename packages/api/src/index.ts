@@ -16,8 +16,10 @@ import { agentHiresRouter } from './routes/agent-hires'
 import { startMarketDataCron } from './cron/sync-market-data'
 import { startAgentCrons } from './cron/agent-rebalance'
 import { startRecommendationCron } from './cron/generate-recommendations'
-import { startMorningBriefCron } from './cron/morning-briefs'
+import { startMorningBriefCron, startScheduledJobsCron } from './cron/morning-briefs'
 import { startExpireChallengesCron } from './cron/expire-challenges'
+import { startDividendCron } from './cron/dividend-credits'
+import { startSplitCron } from './cron/split-adjustments'
 import { startAlpacaStream } from './ws/alpaca-stream'
 import { startWsServer } from './ws/server'
 
@@ -55,7 +57,10 @@ startMarketDataCron()
 startAgentCrons()
 startRecommendationCron()
 startMorningBriefCron()
+startScheduledJobsCron()
 startExpireChallengesCron()
+startDividendCron()
+startSplitCron()
 
 server.listen(PORT, () => {
   console.log(`Mockket API running on port ${PORT}`)

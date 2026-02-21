@@ -46,20 +46,39 @@ export async function getMarketStatus(): Promise<'open' | 'closed' | 'pre-market
   const { data } = await client.get('/v1/clock')
   if (data.is_open) return 'open'
 
-  const now = Date.now()
-  const nextOpen = new Date(data.next_open).getTime()
-  const nextClose = new Date(data.next_close).getTime()
+  const now = new Date()
 
-  // Pre-market: within 5.5 hours before market open (covers 4:00am–9:30am ET extended session)
-  if (now < nextOpen && nextOpen - now <= 5.5 * 60 * 60 * 1000) return 'pre-market'
+  // Get current time-of-day in ET using spec-compliant Intl.DateTimeFormat
+  const timeParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(now)
+  const hours = Number(timeParts.find(p => p.type === 'hour')?.value ?? 0)
+  const minutes = Number(timeParts.find(p => p.type === 'minute')?.value ?? 0)
+  const timeDecimal = hours + minutes / 60
 
-  // After-hours: estimate previous close from next_open and next_close.
-  // next_close - next_open gives the trading day length (typically ~6.5h).
-  // prev_close ≈ next_open - (24h - tradingDayLength) for consecutive business days.
-  // Note: this approximation is inaccurate over weekends (Friday close won't be detected on Sat/Sun).
-  const tradingDayMs = nextClose - nextOpen
-  const estPrevClose = nextOpen - (24 * 60 * 60 * 1000 - tradingDayMs)
-  if (now >= estPrevClose && now - estPrevClose <= 4 * 60 * 60 * 1000) return 'after-hours'
+  // Get today's date string in ET and next_open's date string in ET
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const todayString = dateFormatter.format(now)
+  const nextOpenString = dateFormatter.format(new Date(data.next_open))
 
+  // If next_open is not today, market is closed (weekend or holiday)
+  const isTradingDay = todayString === nextOpenString
+  if (!isTradingDay) return 'closed'
+
+  // Pre-market: 4:00am–9:30am ET
+  if (timeDecimal >= 4 && timeDecimal < 9.5) return 'pre-market'
+
+  // After-hours: 4:00pm–8:00pm ET
+  if (timeDecimal >= 16 && timeDecimal < 20) return 'after-hours'
+
+  // Market closed for the day (e.g. early close, halt, or gap between close and after-hours)
   return 'closed'
 }
