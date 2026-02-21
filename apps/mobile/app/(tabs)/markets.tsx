@@ -7,6 +7,7 @@ import { useLivePrices } from '@/features/markets/hooks/useLivePrices'
 import type { PriceUpdate } from '@/lib/ws/client'
 import { api } from '@/lib/api/client'
 import { tokens } from '@/design/tokens'
+import type { AssetResult } from '@mockket/shared'
 
 type MarketStatus = 'open' | 'closed' | 'pre-market' | 'after-hours'
 
@@ -49,11 +50,6 @@ const STATUS_LABELS: Record<MarketStatus, string> = {
   'pre-market': 'PRE-MARKET',
   'after-hours': 'AFTER-HOURS',
   closed: 'CLOSED',
-}
-
-interface AssetResult {
-  ticker: string
-  name: string
 }
 
 export default function MarketsScreen() {

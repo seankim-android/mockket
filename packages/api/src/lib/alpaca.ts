@@ -56,10 +56,14 @@ export async function searchAssets(query: string): Promise<AssetResult[]> {
       search: query,
     },
   })
-  return (data as any[]).slice(0, 20).map((a) => ({
-    ticker: a.symbol,
-    name: a.name,
-  }))
+  const q = query.toLowerCase()
+  return (data as any[])
+    .filter((a) => a.symbol?.toLowerCase().includes(q) || a.name?.toLowerCase().includes(q))
+    .slice(0, 20)
+    .map((a) => ({
+      ticker: a.symbol,
+      name: a.name,
+    }))
 }
 
 // Check if market is currently open

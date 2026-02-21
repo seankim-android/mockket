@@ -79,12 +79,13 @@ marketsRouter.get('/snapshots', async (req, res) => {
 // GET /markets/search?q=AAPL — search tradable US equity assets
 marketsRouter.get('/search', async (req, res) => {
   const q = req.query.q
-  if (!q || typeof q !== 'string' || q.trim().length < 1) {
-    return res.status(400).json({ error: 'q query param is required' })
+  const trimmed = typeof q === 'string' ? q.trim() : ''
+  if (trimmed.length < 2 || trimmed.length > 20) {
+    return res.status(400).json({ error: 'q must be between 2 and 20 characters' })
   }
 
   try {
-    const results = await searchAssets(q.trim())
+    const results = await searchAssets(trimmed)
     res.json(results)
   } catch {
     res.status(500).json({ error: 'Failed to search assets' })
