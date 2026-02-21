@@ -47,9 +47,20 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
   // Buy at ask, sell at bid
   const price = action === 'buy' ? quote.ask : quote.bid
 
-  await executeTrade({ userId, ticker, action, quantity, price, challengeId, agentHireId })
+  try {
+    await executeTrade({ userId, ticker, action, quantity, price, challengeId, agentHireId })
+  } catch (err: any) {
+    if (err.message === 'Insufficient cash') {
+      return res.status(400).json({ error: 'Insufficient cash to execute this trade' })
+    }
+    if (err.message === 'Insufficient holding quantity') {
+      return res.status(400).json({ error: 'Insufficient shares to sell' })
+    }
+    throw err
+  }
 
-  // PDT day trade tracking — only insert when a round-trip occurs on the same calendar day
+  // PDT day trade tracking — only runs if trade succeeded
+  // only insert when a round-trip occurs on the same calendar day
   const oppositeAction = action === 'buy' ? 'sell' : 'buy'
   const { rows: oppRows } = await db.query(
     `SELECT id FROM trades
