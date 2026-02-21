@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { db } from '../db/client'
+import { getMarketStatus } from '../lib/alpaca'
 
 export const configRouter = Router()
 
@@ -65,4 +66,14 @@ configRouter.get('/changelog', async (req, res) => {
     [version]
   )
   res.json(rows)
+})
+
+// GET /config/market-status
+configRouter.get('/market-status', async (_req, res) => {
+  try {
+    const marketStatus = await getMarketStatus()
+    res.json({ marketStatus })
+  } catch {
+    res.json({ marketStatus: 'unknown' })
+  }
 })

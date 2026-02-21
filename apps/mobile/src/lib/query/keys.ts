@@ -24,4 +24,10 @@ export const queryKeys = {
 
   // Earnings
   earnings: (tickers: string[]) => ['earnings', tickers.sort().join(',')] as const,
+
+  // Config
+  config: () => ['config'] as const,
+
+  // Leaderboard
+  leaderboard: () => ['leaderboard'] as const,
 } as const
