@@ -10,6 +10,9 @@ const MAX_RECONNECT_DELAY = 60000
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let isConnecting = false
 
+// Per-ticker throttle: skip publishes within 200ms of the last for the same ticker
+const lastPublish = new Map<string, number>()
+
 export function stopAlpacaStream() {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer)
@@ -48,6 +51,17 @@ export function addTicker(ticker: string) {
   }
 }
 
+// Remove a ticker when no clients subscribe to it
+export function removeTicker(ticker: string) {
+  const idx = activeTickers.indexOf(ticker)
+  if (idx === -1) return
+  activeTickers.splice(idx, 1)
+  lastPublish.delete(ticker)
+  if (alpacaWs?.readyState === WebSocket.OPEN) {
+    alpacaWs.send(JSON.stringify({ action: 'unsubscribe', quotes: [ticker] }))
+  }
+}
+
 function connect() {
   if (isConnecting) return
   isConnecting = true
@@ -80,6 +94,11 @@ function connect() {
         alpacaWs!.send(JSON.stringify({ action: 'subscribe', quotes: activeTickers }))
       }
       if (msg.T === 'q') {
+        const now = Date.now()
+        const last = lastPublish.get(msg.S) ?? 0
+        if (now - last < 200) continue
+        lastPublish.set(msg.S, now)
+
         const payload = JSON.stringify({
           ticker: msg.S,
           ask: msg.ap,

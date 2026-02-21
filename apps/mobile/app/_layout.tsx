@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Platform, View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { AppState, AppStateStatus, Platform, View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as WebBrowser from 'expo-web-browser'
@@ -41,6 +41,23 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       disconnectPriceFeed()
     }
   }, [session?.access_token])
+
+  // Disconnect WS on background, reconnect on foreground
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      const prev = appStateRef.current
+      appStateRef.current = nextState
+
+      if (nextState === 'active' && prev !== 'active') {
+        const token = useAuthStore.getState().session?.access_token
+        if (token) connectPriceFeed(token)
+      } else if (nextState !== 'active' && prev === 'active') {
+        disconnectPriceFeed()
+      }
+    })
+    return () => sub.remove()
+  }, [])
 
   useEffect(() => {
     if (isLoading || forceUpdate === null) return

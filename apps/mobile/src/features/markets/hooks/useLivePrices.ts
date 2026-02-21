@@ -1,19 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
-import { createPriceSocket, PriceUpdate } from '../../../lib/ws/client'
-import { useAuthStore } from '../../auth/store'
+import { useEffect, useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
+import { subscribeTickers, PriceUpdate } from '../../../lib/ws/client'
+import { queryKeys } from '../../../lib/query/keys'
 
 export function useLivePrices(tickers: string[]) {
-  const [prices, setPrices] = useState<Record<string, PriceUpdate>>({})
-  const wsRef = useRef<WebSocket | null>(null)
-  const session = useAuthStore((s) => s.session)
-
   useEffect(() => {
-    if (!session?.access_token || tickers.length === 0) return
-    wsRef.current = createPriceSocket(session.access_token, tickers, (update) => {
-      setPrices(prev => ({ ...prev, [update.ticker]: update }))
-    })
-    return () => wsRef.current?.close()
-  }, [session?.access_token, tickers.join(',')])
+    if (tickers.length > 0) subscribeTickers(tickers)
+  }, [tickers.join(',')])
 
-  return prices
+  const queries = useQueries({
+    queries: tickers.map((ticker) => ({
+      queryKey: queryKeys.price(ticker),
+      queryFn: () => Promise.resolve(null as PriceUpdate | null),
+      staleTime: Infinity,
+    })),
+  })
+
+  return useMemo(() => {
+    const result: Record<string, PriceUpdate> = {}
+    for (let i = 0; i < tickers.length; i++) {
+      const data = queries[i]?.data
+      if (data) result[tickers[i]] = data
+    }
+    return result
+  }, [tickers.join(','), ...queries.map((q) => q.data)])
 }

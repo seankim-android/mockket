@@ -95,12 +95,12 @@ server.listen(PORT, () => {
   console.log(`Mockket API running on port ${PORT}`)
 })
 
-function shutdown() {
+async function shutdown() {
   console.log('[server] shutting down...')
   // Stop Alpaca stream first so Railway's new instance can claim the connection.
   stopAlpacaStream()
-  // Close the WebSocket server (drops all client connections immediately).
-  wsServer.close()
+  // Close the WebSocket server (drops all client connections, unsubscribes Redis).
+  await wsServer.close()
   // Give HTTP connections up to 5s to drain, then force-exit.
   server.close(() => process.exit(0))
   setTimeout(() => process.exit(0), 5_000).unref()
