@@ -30,7 +30,7 @@ export const priyaSharma: AgentModule = {
           ticker: holding.ticker,
           action: 'sell',
           quantity: trimQuantity,
-          priceAtExecution: currentPrice,
+          priceAtExecution: marketData.bid[holding.ticker] ?? currentPrice,
           rationale: `$${holding.ticker} up ${(gainPercent * 100).toFixed(1)}%. Trimming 25% to rebalance — strong conviction, but discipline matters.`,
           challengeId: null,
           executedAt: new Date().toISOString(),

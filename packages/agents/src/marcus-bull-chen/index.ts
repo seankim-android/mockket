@@ -28,7 +28,7 @@ export const marcusBullChen: AgentModule = {
           ticker: holding.ticker,
           action: 'sell',
           quantity: holding.quantity,
-          priceAtExecution: currentPrice,
+          priceAtExecution: marketData.bid[holding.ticker] ?? currentPrice,
           rationale: `$${holding.ticker} down ${(lossPercent * 100).toFixed(1)}% from cost basis — cutting the loser, rotating capital.`,
           challengeId: null,
           executedAt: new Date().toISOString(),
