@@ -1,4 +1,5 @@
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Text } from '@/components/primitives'
@@ -22,9 +23,23 @@ export default function Recap() {
   const { challengeId } = useLocalSearchParams<{ challengeId: string }>()
   const router = useRouter()
 
+  const [showAutopsy, setShowAutopsy] = useState(false)
+
   const { data: challenge, isLoading } = useQuery<Challenge>({
     queryKey: ['challenge', challengeId],
     queryFn: () => api.get<Challenge>(`/challenges/${challengeId}`),
+  })
+
+  const { data: autopsy, isLoading: isLoadingAutopsy } = useQuery({
+    queryKey: ['challenge-autopsy', challengeId],
+    queryFn: () => api.get<Array<{
+      label: string
+      userAction: string
+      agentAction: string
+      outcome: string
+      impactPct: number
+    }>>(`/challenges/${challengeId}/autopsy`),
+    enabled: showAutopsy,
   })
 
   if (isLoading || !challenge) {
@@ -40,7 +55,7 @@ export default function Recap() {
   const resultColor = isTie ? tokens.colors.warning : userWon ? tokens.colors.positive : tokens.colors.negative
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.container}>
       {/* Result headline */}
       <View style={[styles.resultBadge, { backgroundColor: resultColor + '20', borderColor: resultColor }]}>
         <Text variant="heading" style={{ color: resultColor }}>
@@ -77,10 +92,43 @@ export default function Recap() {
           : ''}
       </Text>
 
+      {challenge.status === 'completed' && !challenge.is_forfeited && (
+        <TouchableOpacity
+          style={styles.autopsyBtn}
+          onPress={() => setShowAutopsy((v) => !v)}
+        >
+          <Text variant="label" style={{ color: tokens.colors.brand.default }}>
+            {userWon ? 'See what worked' : 'See where it slipped away'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {showAutopsy && (
+        <View style={styles.autopsyCard}>
+          {isLoadingAutopsy && <Text variant="caption" color="secondary">Loading…</Text>}
+          {autopsy?.map((moment, i) => (
+            <View key={i} style={styles.autopsyMoment}>
+              <Text variant="label" style={{ marginBottom: tokens.spacing[2] }}>{moment.label}</Text>
+              <Text variant="caption" color="secondary">You: {moment.userAction}</Text>
+              <Text variant="caption" color="secondary">{challenge.agent_id ?? 'Opponent'}: {moment.agentAction}</Text>
+              <Text
+                variant="caption"
+                style={{
+                  color: moment.impactPct >= 0 ? tokens.colors.positive : tokens.colors.negative,
+                  marginTop: tokens.spacing[2],
+                }}
+              >
+                {moment.outcome}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       <TouchableOpacity style={styles.homeBtn} onPress={() => router.replace('/(tabs)/challenges')}>
         <Text variant="label" style={{ color: '#fff' }}>Back to Challenges</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   )
 }
 
@@ -94,11 +142,11 @@ function Row({ label, value, valueColor }: { label: string; value: string; value
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: { flex: 1, backgroundColor: tokens.colors.bg.primary },
   container: {
-    flex: 1,
-    backgroundColor: tokens.colors.bg.primary,
     padding: tokens.spacing[6],
     paddingTop: 80,
+    paddingBottom: tokens.spacing[8],
     alignItems: 'center',
   },
   centered: { flex: 1, backgroundColor: tokens.colors.bg.primary, alignItems: 'center', justifyContent: 'center' },
@@ -130,5 +178,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing[8],
     width: '100%',
     alignItems: 'center',
+  },
+  autopsyBtn: { padding: tokens.spacing[3], alignItems: 'center', marginBottom: tokens.spacing[3] },
+  autopsyCard: {
+    backgroundColor: tokens.colors.bg.secondary,
+    borderRadius: tokens.radii.lg,
+    padding: tokens.spacing[4],
+    width: '100%',
+    marginBottom: tokens.spacing[4],
+    gap: tokens.spacing[4],
+  },
+  autopsyMoment: {
+    borderLeftWidth: 2,
+    borderLeftColor: tokens.colors.brand.default,
+    paddingLeft: tokens.spacing[3],
+    gap: tokens.spacing[1],
   },
 })
