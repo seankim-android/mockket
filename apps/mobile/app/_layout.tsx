@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useSession } from '@/features/auth/hooks/useSession'
 import { useAuthStore } from '@/features/auth/store'
+import { supabase } from '@/lib/supabase'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -87,7 +88,27 @@ const fuStyles = StyleSheet.create({
   ctaLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
 })
 
+function useOAuthDeepLink() {
+  useEffect(() => {
+    async function handleUrl(url: string) {
+      if (url.includes('auth/callback')) {
+        await supabase.auth.exchangeCodeForSession(url)
+      }
+    }
+
+    // App already open — catch the deep link
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url))
+
+    // App cold-started from a deep link
+    Linking.getInitialURL().then((url) => { if (url) handleUrl(url) })
+
+    return () => sub.remove()
+  }, [])
+}
+
 export default function RootLayout() {
+  useOAuthDeepLink()
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthGate>

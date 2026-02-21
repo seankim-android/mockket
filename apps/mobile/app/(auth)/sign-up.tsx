@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ActivityIndicator,
   StyleSheet,
@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
 import { Text } from '@/components/primitives'
 import { supabase } from '@/lib/supabase'
 import { tokens } from '@/design/tokens'
@@ -18,7 +19,34 @@ export default function SignUp() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    WebBrowser.warmUpAsync()
+    return () => { WebBrowser.coolDownAsync() }
+  }, [])
+
+  async function handleOAuth(provider: 'google' | 'apple') {
+    setOauthLoading(provider)
+    setError(null)
+    const redirectTo = 'mockket://auth/callback'
+    const { data, error: err } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo, skipBrowserRedirect: true },
+    })
+    if (err || !data.url) {
+      setError(err?.message ?? 'Sign-up failed. Please try again.')
+      setOauthLoading(null)
+      return
+    }
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
+    if (result.type === 'success') {
+      const { error: sessionErr } = await supabase.auth.exchangeCodeForSession(result.url)
+      if (sessionErr) setError(sessionErr.message)
+    }
+    setOauthLoading(null)
+  }
 
   async function handleSignUp() {
     const trimmedEmail = email.trim()
@@ -39,6 +67,8 @@ export default function SignUp() {
     }
     // Auth gate in _layout.tsx redirects to (tabs) on session
   }
+
+  const anyLoading = loading || oauthLoading !== null
 
   return (
     <KeyboardAvoidingView
@@ -83,9 +113,9 @@ export default function SignUp() {
       )}
 
       <TouchableOpacity
-        style={[styles.cta, loading && styles.ctaDisabled]}
+        style={[styles.cta, anyLoading && styles.ctaDisabled]}
         onPress={handleSignUp}
-        disabled={loading}
+        disabled={anyLoading}
         accessibilityRole="button"
         accessibilityLabel="Create account"
       >
@@ -94,6 +124,48 @@ export default function SignUp() {
         ) : (
           <Text variant="label" style={styles.ctaLabel}>
             Create Account
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text variant="caption" color="secondary" style={styles.dividerLabel}>
+          or
+        </Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      {Platform.OS === 'ios' && (
+        <TouchableOpacity
+          style={[styles.oauthButton, anyLoading && styles.ctaDisabled]}
+          onPress={() => handleOAuth('apple')}
+          disabled={anyLoading}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Apple"
+        >
+          {oauthLoading === 'apple' ? (
+            <ActivityIndicator color={tokens.colors.text.primary} />
+          ) : (
+            <Text variant="label" color="primary">
+               Continue with Apple
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity
+        style={[styles.oauthButton, anyLoading && styles.ctaDisabled]}
+        onPress={() => handleOAuth('google')}
+        disabled={anyLoading}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+      >
+        {oauthLoading === 'google' ? (
+          <ActivityIndicator color={tokens.colors.text.primary} />
+        ) : (
+          <Text variant="label" color="primary">
+            G  Continue with Google
           </Text>
         )}
       </TouchableOpacity>
@@ -144,5 +216,27 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.6 },
   ctaLabel: { color: tokens.colors.text.inverse },
-  signIn: { padding: tokens.spacing[3], alignItems: 'center' },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: tokens.spacing[4],
+    gap: tokens.spacing[3],
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: tokens.colors.border.default,
+  },
+  dividerLabel: {
+    flexShrink: 0,
+  },
+  oauthButton: {
+    borderWidth: 1,
+    borderColor: tokens.colors.border.default,
+    borderRadius: tokens.radii.lg,
+    padding: tokens.spacing[4],
+    alignItems: 'center',
+    marginBottom: tokens.spacing[3],
+  },
+  signIn: { padding: tokens.spacing[3], alignItems: 'center', marginTop: tokens.spacing[2] },
 })
