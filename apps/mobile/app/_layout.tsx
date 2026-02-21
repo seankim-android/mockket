@@ -30,18 +30,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, isLoading } = useAuthStore()
   const segments = useSegments()
   const router = useRouter()
-  const inAuthGroup = segments[0] === '(auth)'
+  const inAuthGroup = segments[0] === '(auth)' || segments[0] === 'auth'
   const [forceUpdate, setForceUpdate] = useState<boolean | null>(null)
 
   useEffect(() => {
-    if (isLoading) return
+    if (isLoading || forceUpdate === null) return
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/welcome')
     } else if (session && inAuthGroup) {
       router.replace('/(tabs)')
     }
-  }, [session, isLoading, inAuthGroup, router])
+  }, [session, isLoading, inAuthGroup, router, forceUpdate])
 
   useEffect(() => {
     if (!session) {
@@ -49,8 +49,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return
     }
     async function checkVersion() {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 4000)
       try {
-        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000'}/config/app-version`)
+        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000'}/config/app-version`, { signal: controller.signal })
+        clearTimeout(timeout)
         if (!res.ok) { setForceUpdate(false); return }
         const config = await res.json()
         const platform = Platform.OS === 'ios' ? config.ios : config.android
