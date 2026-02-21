@@ -49,7 +49,7 @@ export async function syncMarketData() {
         await db.query(
           `INSERT INTO current_prices (ticker, price, updated_at) VALUES ($1, $2, NOW())
            ON CONFLICT (ticker) DO UPDATE SET price = $2, updated_at = NOW()`,
-          [q.ticker, q.mid]
+          [q.ticker, q.bid]
         )
       }
     } catch (err: any) {
