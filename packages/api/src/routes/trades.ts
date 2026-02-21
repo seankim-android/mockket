@@ -37,6 +37,20 @@ tradesRouter.post('/', requireAuth, async (req, res) => {
     return res.status(422).json({ error: `Market is currently in ${marketStatus}. Extended hours trading is not supported.` })
   }
 
+  // Validate challengeId ownership and status
+  if (challengeId) {
+    const { rows: challengeRows } = await db.query(
+      `SELECT id FROM challenges
+       WHERE id = $1
+         AND (user_id = $2 OR opponent_user_id = $2)
+         AND status = 'active'`,
+      [challengeId, userId]
+    )
+    if (challengeRows.length === 0) {
+      return res.status(403).json({ error: 'Challenge not found or not active' })
+    }
+  }
+
   let quote
   try {
     quote = await getQuote(ticker)
