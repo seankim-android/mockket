@@ -20,13 +20,23 @@ export async function executeTrade(trade: TradeInput): Promise<void> {
     if (trade.action === 'buy') {
       const cost = trade.quantity * trade.price
 
-      // Deduct cash — fails if insufficient
-      const { rows } = await client.query(
-        `UPDATE users SET portfolio_cash = portfolio_cash - $1, updated_at = NOW()
-         WHERE id = $2 AND portfolio_cash >= $1 RETURNING id`,
-        [cost, trade.userId]
-      )
-      if (rows.length === 0) throw new Error('Insufficient cash')
+      if (trade.challengeId) {
+        // Deduct from challenge cash, not main portfolio
+        const { rows } = await client.query(
+          `UPDATE challenges SET challenge_cash = challenge_cash - $1
+           WHERE id = $2 AND challenge_cash >= $1 RETURNING id`,
+          [cost, trade.challengeId]
+        )
+        if (rows.length === 0) throw new Error('Insufficient cash')
+      } else {
+        // Deduct from main portfolio
+        const { rows } = await client.query(
+          `UPDATE users SET portfolio_cash = portfolio_cash - $1, updated_at = NOW()
+           WHERE id = $2 AND portfolio_cash >= $1 RETURNING id`,
+          [cost, trade.userId]
+        )
+        if (rows.length === 0) throw new Error('Insufficient cash')
+      }
 
       // Upsert holding — use partial index for main portfolio, full constraint for segments
       if (!trade.agentHireId && !trade.challengeId) {
@@ -64,11 +74,18 @@ export async function executeTrade(trade: TradeInput): Promise<void> {
       )
       if ((holdingResult.rowCount ?? 0) === 0) throw new Error('Insufficient holding quantity')
 
-      await client.query(
-        `UPDATE users SET portfolio_cash = portfolio_cash + $1, updated_at = NOW()
-         WHERE id = $2`,
-        [proceeds, trade.userId]
-      )
+      if (trade.challengeId) {
+        await client.query(
+          `UPDATE challenges SET challenge_cash = challenge_cash + $1 WHERE id = $2`,
+          [proceeds, trade.challengeId]
+        )
+      } else {
+        await client.query(
+          `UPDATE users SET portfolio_cash = portfolio_cash + $1, updated_at = NOW()
+           WHERE id = $2`,
+          [proceeds, trade.userId]
+        )
+      }
 
       // Clean up zero-quantity holdings
       await client.query(
