@@ -9,14 +9,14 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mockket.app",
+      "bundleIdentifier": "app.mockket",
       "associatedDomains": ["applinks:mockket.app"]
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0F172A"
       },
-      "package": "com.mockket.app",
+      "package": "app.mockket",
       "intentFilters": [
         {
           "action": "VIEW",
