@@ -65,25 +65,23 @@ export interface SplitEvent {
 }
 
 export async function getSplits(tickers: string[]): Promise<SplitEvent[]> {
-  if (!process.env.POLYGON_API_KEY) return []
-  try {
-    const results: SplitEvent[] = []
-    for (const ticker of tickers) {
-      const { data } = await axios.get(
-        `https://api.polygon.io/v3/reference/splits?ticker=${ticker}&limit=10`,
-        { headers: { Authorization: `Bearer ${process.env.POLYGON_API_KEY}` } }
-      )
-      for (const s of (data.results ?? [])) {
-        results.push({
-          ticker: s.ticker,
-          effectiveDate: s.execution_date,
-          ratio: s.split_to / s.split_from,
+  const results: SplitEvent[] = []
+  await Promise.all(
+    tickers.map(async (ticker) => {
+      try {
+        const { data } = await client.get('/v3/reference/splits', {
+          params: { ticker, limit: 10 },
         })
+        if (!Array.isArray(data.results)) return
+        for (const s of data.results) {
+          const ratio = s.split_to / s.split_from
+          if (ratio <= 0) continue
+          results.push({ ticker: s.ticker, effectiveDate: s.execution_date, ratio })
+        }
+      } catch (err: any) {
+        console.error(`[polygon] getSplits failed for ${ticker}:`, err.message)
       }
-    }
-    return results
-  } catch (err: any) {
-    console.error('[polygon] getSplits failed:', err.message)
-    return []
-  }
+    })
+  )
+  return results
 }

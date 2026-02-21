@@ -10,6 +10,10 @@ export async function applySplitAdjustments() {
     )
 
     for (const split of splits) {
+      if (Number(split.ratio) <= 0) {
+        console.error(`[splits] skipping ${split.ticker}: invalid ratio ${split.ratio}`)
+        continue
+      }
       const client = await db.connect()
       try {
         await client.query('BEGIN')
